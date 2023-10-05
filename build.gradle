@@ -1,0 +1,37 @@
+plugins {
+    id 'java'
+}
+
+group = 'westmount.codingclub'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly 'com.google.code.gson:gson:2.10.1'
+
+    implementation 'io.pebbletemplates:pebble:3.2.1'
+
+    // TODO: check whether we need to switch to community version
+    implementation 'org.graalvm.polyglot:polyglot:23.1.0'
+    implementation 'org.graalvm.polyglot:js:23.1.0'
+    implementation 'org.graalvm.polyglot:python:23.1.0'
+    implementation 'org.graalvm.polyglot:llvm:23.1.0'
+    implementation 'org.graalvm.polyglot:wasm:23.1.0'
+
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+    implementation 'org.slf4j:slf4j-simple:2.0.9'
+
+    implementation 'name.martingeisse:grumpyjson:version-0.6'
+    implementation 'name.martingeisse:grumpyrest:version-0.6'
+    implementation 'name.martingeisse:grumpyrest-jetty-launcher:version-0.6'
+
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
