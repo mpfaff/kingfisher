@@ -12,6 +12,7 @@ import org.slf4j.event.Level;
 import westmount.codingclub.constants.ContentType;
 import westmount.codingclub.constants.Header;
 import westmount.codingclub.templating.FileLoader;
+import westmount.codingclub.templating.OurExtension;
 import westmount.codingclub.util.ProxyConstantTable;
 
 import java.io.IOException;
@@ -40,6 +41,7 @@ public final class ScriptEngine {
 			.executorService(executor)
 			.strictVariables(true)
 			.loader(new FileLoader(TEMPLATES_DIR))
+			.extension(new OurExtension())
 			.build();
 	public final RestApi api = new RestApi();
 	private final List<Source> sources;
