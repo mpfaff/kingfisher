@@ -1,28 +1,25 @@
 package westmount.codingclub.responses;
 
-import name.martingeisse.grumpyrest.response.Response;
-import name.martingeisse.grumpyrest.response.ResponseTransmitter;
+import org.eclipse.jetty.server.Response;
+import org.eclipse.jetty.util.Callback;
 
 import java.util.Map;
 import java.util.Objects;
 
 import static westmount.codingclub.Main.WEB_LOGGER;
 
-public record BuiltResponse(int status, Map<String, String> headers, Writer writer) implements Response {
+public record BuiltResponse(int status, Map<String, String> headers, Writer writer) {
 	public BuiltResponse {
 		Objects.requireNonNull(headers);
 	}
 
-	@Override
-	public void transmit(ResponseTransmitter transmitter) {
+	public void send(Response response, Callback callback) {
 		try {
-			transmitter.setStatus(status);
-			headers.forEach(transmitter::addCustomHeader);
+			response.setStatus(status);
+			headers.forEach(response.getHeaders()::add);
 			WEB_LOGGER.info("Transmitted status and content type");
 			if (writer != null) {
-				try (var stream = transmitter.getOutputStream()) {
-					writer.write(stream);
-				}
+				writer.write(response, callback);
 				WEB_LOGGER.info("Transmitted content");
 			}
 		} catch (Throwable e) {

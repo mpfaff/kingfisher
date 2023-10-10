@@ -1,9 +1,1 @@
 rootProject.name = 'website'
-
-sourceControl {
-    gitRepository('https://github.com/MartinGeisse/grumpyrest.git') {
-        producesModule('name.martingeisse:grumpyjson')
-        producesModule('name.martingeisse:grumpyrest')
-        producesModule('name.martingeisse:grumpyrest-jetty-launcher')
-    }
-}

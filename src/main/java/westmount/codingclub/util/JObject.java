@@ -7,12 +7,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Structurally fixed object.
+ * Thread-safe but non-synchronized, structurally fixed object. Subject to the Java Memory Model.s
  */
-public final class ConcurrentObject implements ProxyObject {
-	private final Map<String, Object> map = new HashMap<>();
+public final class JObject implements ProxyObject {
+	private final Map<String, Object> map;
 
-	public ConcurrentObject(Object obj) {
+	public JObject(Object obj) {
+		this.map = new HashMap<>();
 		switch (obj) {
 			case Value valueIn -> {
 				if (!valueIn.hasMembers()) throw new IllegalArgumentException("this value does not have members");
@@ -21,6 +22,10 @@ public final class ConcurrentObject implements ProxyObject {
 			case Map<?, ?> mapIn -> mapIn.forEach((k, v) -> this.map.put((String) k, v));
 			default -> throw new IllegalArgumentException("Cannot make a concurrent object from provided value: " + obj);
 		}
+	}
+
+	public JObject(Map<String, Object> map) {
+		this.map = map;
 	}
 
 	@Override

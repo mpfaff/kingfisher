@@ -1,27 +1,24 @@
 package westmount.codingclub;
 
-import name.martingeisse.grumpyrest.request.HttpMethod;
 import org.graalvm.polyglot.Value;
-import westmount.codingclub.constants.Status;
 import westmount.codingclub.requests.ProxyRequest;
-import westmount.codingclub.responses.ResponseBuilder;
+import westmount.codingclub.requests.RegexRouteHandler;
+import westmount.codingclub.util.JObject;
 
+import java.util.Map;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 import static westmount.codingclub.Main.SCRIPT_LOGGER;
 
 public final class InitScriptApi extends ScriptApi {
+	private final int scriptIndex;
 	private Object state;
 	private boolean hasSetState;
 
-	public InitScriptApi(ScriptEngine engine) {
+	public InitScriptApi(ScriptEngine engine, int scriptIndex) {
 		super(engine);
-	}
-
-	@Override
-	public void startNewScript(String name) {
-		state = null;
-		hasSetState = false;
+		this.scriptIndex = scriptIndex;
 	}
 
 	@Override
@@ -32,23 +29,20 @@ public final class InitScriptApi extends ScriptApi {
 	}
 
 	@Override
-	public void addRoute(HttpMethod method, String path, Value handler) {
+	public void addRoute(String method, String path, Value handler) {
 		var state = this.state;
-		engine.api.addRoute(method, path, req -> {
+		int handlerId = nextHandlerId();
+		engine.handlers.add(new RegexRouteHandler(method, Pattern.compile(path), (request, arguments, response, callback) -> {
 			SCRIPT_LOGGER.info("Forwarding handler for request on " + Thread.currentThread() + " to " + engine.executor);
-			return engine.executor.submit(() -> {
-				var api = new HandlerScriptApi(engine, state, method, path);
-				try (var ctx = engine.loadScripts(api)) {
-					return api.handler.handle(new ProxyRequest(req));
+			engine.executor.submit(() -> {
+				var api = new HandlerInvocationScriptApi(engine, state, handlerId);
+				try (var ctx = engine.loadScripts(api, scriptIndex)) {
+					//noinspection unchecked,rawtypes
+					return api.handler.handle(new ProxyRequest(request), new JObject((Map<String, Object>) (Map) arguments));
 				} catch (Throwable e) {
-					SCRIPT_LOGGER.error("Caught exception while handling request", e);
-					return new ResponseBuilder()
-							.status(Status.INTERNAL_SERVER_ERROR)
-							.content("<p style=\"font-size: 4em\">Internal server error<p>")
-							.html()
-							.finish();
+					throw new RuntimeException(e);
 				}
-			}).get();
-		});
+			}).get().send(response, callback);
+		}));
 	}
 }

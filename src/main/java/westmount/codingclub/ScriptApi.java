@@ -1,12 +1,12 @@
 package westmount.codingclub;
 
-import name.martingeisse.grumpyrest.request.HttpMethod;
 import org.graalvm.polyglot.Value;
 import westmount.codingclub.responses.ResponseBuilder;
-import westmount.codingclub.util.ConcurrentObject;
+import westmount.codingclub.util.JObject;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -18,12 +18,15 @@ import java.util.function.Supplier;
  */
 public abstract class ScriptApi {
 	protected final ScriptEngine engine;
+	private int nextHandlerId;
 
 	protected ScriptApi(ScriptEngine engine) {
 		this.engine = engine;
 	}
 
-	public abstract void startNewScript(String name);
+	protected int nextHandlerId() {
+		return nextHandlerId++;
+	}
 
 	/**
 	 * Scripts are reevaluated for each request, so they need a way to share state.
@@ -33,7 +36,7 @@ public abstract class ScriptApi {
 	 */
 	public abstract Object getState(Supplier<Object> initFunction);
 
-	public abstract void addRoute(HttpMethod method, String path, Value handler);
+	public abstract void addRoute(String method, String path, Value handler);
 
 	public final ResponseBuilder respond() {
 		return new ResponseBuilder();
@@ -43,8 +46,8 @@ public abstract class ScriptApi {
 		return respond().status(status);
 	}
 
-	public final ConcurrentMap<Object, Object> ConcMap(Object obj) {
-		var map = new ConcurrentHashMap<>();
+	private Map<Object, Object> mapFromObject(Object obj, Supplier<Map<Object, Object>> mapConstructor) {
+		var map = mapConstructor.get();
 		switch (obj) {
 			case Value pValue -> {
 				if (!pValue.hasMembers()) throw new IllegalArgumentException("this value does not have members");
@@ -56,8 +59,25 @@ public abstract class ScriptApi {
 		return map;
 	}
 
-	public final ConcurrentObject ConcObject(Object obj) {
-		return new ConcurrentObject(obj);
+	/**
+	 * Non-thread-safe map type. With proper synchronization, this may be used from multiple threads.
+	 */
+	public final Map<Object, Object> JMap(Object obj) {
+		return mapFromObject(obj, HashMap::new);
+	}
+
+	/**
+	 * Thread-safe map type.
+	 */
+	public final Map<Object, Object> ConcurrentMap(Object obj) {
+		return mapFromObject(obj, ConcurrentHashMap::new);
+	}
+
+	/**
+	 * @see JObject
+	 */
+	public final JObject JObject(Object obj) {
+		return new JObject(obj);
 	}
 
 	public final String render(String templateName, Map<String, Object> context) throws IOException {

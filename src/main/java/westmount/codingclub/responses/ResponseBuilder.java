@@ -1,7 +1,5 @@
 package westmount.codingclub.responses;
 
-import name.martingeisse.grumpyrest.response.Response;
-import org.graalvm.polyglot.HostAccess;
 import westmount.codingclub.constants.ContentType;
 import westmount.codingclub.constants.Header;
 
@@ -83,7 +81,7 @@ public final class ResponseBuilder {
 		return header(Header.LOCATION, value);
 	}
 
-	public Response finish() {
+	public BuiltResponse finish() {
 		return new BuiltResponse(status, Objects.requireNonNullElseGet(headers, Map::of), writer);
 	}
 }

@@ -1,12 +1,16 @@
 package westmount.codingclub.requests;
 
-import name.martingeisse.grumpyrest.request.Request;
+import org.eclipse.jetty.io.Content;
+import org.eclipse.jetty.server.Request;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 
 public final class ProxyRequest implements ProxyObject {
 	private static final Set<String> FIELD_NAMES = Set.of("method", "header", "argument", "bodyString", "bodyBytes");
@@ -20,10 +24,32 @@ public final class ProxyRequest implements ProxyObject {
 	public Object getMember(String key) {
 		return switch (key) {
 			case "method" -> request.getMethod();
-			case "header" -> (Function<String, String>) request::getHeader;
-			case "argument" -> (IntFunction<String>) i -> request.getPathArguments().get(i).getText();
-			case "bodyString" -> request.parseBody(String.class);
-			case "bodyBytes" -> request.parseBody(byte[].class);
+			case "header" -> (Function<String, String>) request.getHeaders()::get;
+			case "bodyString" -> {
+				var sb = new StringBuilder();
+				while (true) {
+					Content.Chunk chunk;
+					while ((chunk = request.read()) == null) {
+						var thread = Thread.currentThread();
+						request.demand(() -> LockSupport.unpark(thread));
+						LockSupport.park();
+					}
+					sb.append(StandardCharsets.UTF_8.decode(chunk.getByteBuffer()));
+					if (chunk.isLast()) break;
+				}
+				yield sb.toString();
+			}
+			case "bodyBytes" -> {
+				ByteBuffer buf;
+				try {
+					buf = Content.Source.asByteBuffer(request);
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+				var bytes = new byte[buf.remaining()];
+				buf.get(bytes);
+				yield bytes;
+			}
 			default -> throw new IllegalArgumentException("No such field " + key + " on Request");
 		};
 	}

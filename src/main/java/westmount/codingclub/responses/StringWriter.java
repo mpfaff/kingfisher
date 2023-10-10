@@ -1,5 +1,8 @@
 package westmount.codingclub.responses;
 
+import org.eclipse.jetty.io.Content;
+import org.eclipse.jetty.util.Callback;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -11,9 +14,7 @@ public record StringWriter(String string) implements Writer {
 	}
 
 	@Override
-	public void write(OutputStream os) throws IOException {
-		var ow = new OutputStreamWriter(os);
-		ow.write(string);
-		ow.flush();
+	public void write(Content.Sink sink, Callback callback) {
+		Content.Sink.write(sink, true, string, callback);
 	}
 }

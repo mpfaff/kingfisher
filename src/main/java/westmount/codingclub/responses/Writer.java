@@ -1,5 +1,8 @@
 package westmount.codingclub.responses;
 
+import org.eclipse.jetty.io.Content;
+import org.eclipse.jetty.util.Callback;
+
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -10,7 +13,7 @@ public interface Writer {
 	/**
 	 * Writes to the provided stream. Clean up is managed by the caller.
 	 */
-	void write(OutputStream stream) throws IOException;
+	void write(Content.Sink sink, Callback callback) throws IOException;
 
 	static Writer bytesWriter(byte[] content) {
 		return new BytesWriter(content);
