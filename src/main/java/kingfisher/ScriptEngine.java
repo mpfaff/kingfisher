@@ -106,6 +106,10 @@ public final class ScriptEngine {
 		if ("llvm".equals(lang)) return;
 		if ("wasm".equals(lang)) return;
 
+		// Profiling shows that this takes a long time because the language is lazily initialized and this is where it
+		// happens. Specifically, it appears that libpython/importlib/_bootstrap.py#__import__ takes the vast majority
+		// of the time. I suspect this is not because __import__ itself is slow, but rather the GraalPy interpreter,
+		// combined with the size of the python standard library being imported.
 		var bindings = ctx.getBindings(lang);
 
 		if (TRACE_SCRIPT_ENGINE) {

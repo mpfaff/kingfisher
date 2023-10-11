@@ -26,6 +26,14 @@ Primitives such as booleans, integers, numbers, and strings are thread-safe in m
 
 Objects and lists, on the other hand, are not. If you need such data structures to be accessible from multiple threads at once (as is the case with script state), you must make use of Java types provided by the API such as `JMap`, `JObject`, and `ConcurrentMap` (TODO: implement `JList`) instead.
 
+### Server-side rendering
+
+Server-side rendering is supported via scripting, and template rendering. The template engine used is [Pebble](https://pebbletemplates.io/).
+
+Templates must be placed inside the `templates` directory. Custom code can be executed within templates using the `code | lang(args...)` syntax. Supported languages for embedding within templates are JavaScript (`js`) and Python (`py`). The code must evaluate to a function that accepts `args...`.
+
+See the examples below for... examples!
+
 ### Examples
 
 Here is a simple counter example...
@@ -76,7 +84,7 @@ addRoute(GET, "/hello/(?<name>.+)", handle_hello_name)
 and the corresponding template:
 
 ```html
-<h1>Hello, {{"name => name.toUpperCase()" | js(name)}}!</h1>
+<h1>Hello, {{"name => name.toUpperCase()" | js(name) | escape}}!</h1>
 ```
 
 This might look strange. Fear not! Let's break it down:
@@ -98,6 +106,24 @@ This is simply a string with some code. In this case, JavaScript.
 ```
 
 This pipes (`|`) the previous expression (the string) through the filter (`js`), specified immediately after. In parentheses, we provide the argument `name` to the filter. The `js` filter evaluates the input string (the one before the `|`), then calls it with all the arguments that were passed to the filter.
+
+```
+| escape
+```
+
+This pipes the previous expression (the evaluation result) through the filter (`escape`). Parentheses are only required if arguments are passed.
+
+This filter escapes the input value to prevent XSS vulnerabilities. You should use this filter whenever inserting user input into templates.
+
+The `escape` filter accepts an optional `strategy` argument, which accepts the following values:
+
+- `"html"`
+- `"js"`
+- `"css"`
+- `"url_param"`
+- `"json"`
+
+The default strategy is `"html"`, so most of the time you will not need to specify a strategy.
 
 ```
 }}
