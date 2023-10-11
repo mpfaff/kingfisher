@@ -1,5 +1,4 @@
 ---
-render_with_liquid: false
 ---
 
 # Kingfisher
@@ -40,6 +39,6 @@ See the examples below for... examples!
 
 ### Examples
 
-#### [Counter](examples/counter.md)
+#### [Counter]({% link examples/counter.md %})
 
-#### [Templating (trivial)](examples/templating-trivial.md)
+#### [Templating (trivial)]({% link examples/templating-trivial.md %})
