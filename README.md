@@ -1,4 +1,8 @@
-# \<name\>
+# Kingfisher
+
+![](https://upload.wikimedia.org/wikipedia/commons/0/0c/BeltedKingfisherJG_Male.jpg)
+
+A super-duper spectacular multi-language web server.
 
 ## Scripts
 
@@ -22,9 +26,11 @@ Primitives such as booleans, integers, numbers, and strings are thread-safe in m
 
 Objects and lists, on the other hand, are not. If you need such data structures to be accessible from multiple threads at once (as is the case with script state), you must make use of Java types provided by the API such as `JMap`, `JObject`, and `ConcurrentMap` (TODO: implement `JList`) instead.
 
-### JavaScript
+### Examples
 
-Here is a simple counter example in JavaScript:
+Here is a simple counter example...
+
+... in **Javascript**:
 
 ```js
 state = getState(() => ConcObject({counter: 0}));
@@ -35,9 +41,7 @@ addRoute(GET, "/count", req => {
 });
 ```
 
-### Python
-
-Here is a simple counter example in Python:
+... in **Python**:
 
 ```py
 state = getState(lambda: JObject({'counter': 0}))
@@ -49,3 +53,54 @@ def handle_counter(req, args):
 
 addRoute(GET, "/count", handle_counter)
 ```
+
+Here is a simple template rendering example...
+
+... in **Javascript**:
+
+```js
+addRoute(GET, "/hello/(?<name>.+)", (req, args) => {
+    return respond().status(200).content(render("hello_name.html", args)).html().finish()
+})
+```
+
+... in **Python**:
+
+```py
+def handle_hello_name(req, args):
+    return respond().status(200).content(render("hello_name.html", args)).html().finish()
+
+addRoute(GET, "/hello/(?<name>.+)", handle_hello_name)
+```
+
+and the corresponding template:
+
+```html
+<h1>Hello, {{"name => name.toUpperCase()" | js(name)}}!</h1>
+```
+
+This might look strange. Fear not! Let's break it down:
+
+```
+{{
+```
+
+This starts a template expression.
+
+```
+"name => name.toUpperCase()"
+```
+
+This is simply a string with some code. In this case, JavaScript.
+
+```
+| js(name)
+```
+
+This pipes (`|`) the previous expression (the string) through the filter (`js`), specified immediately after. In parentheses, we provide the argument `name` to the filter. The `js` filter evaluates the input string (the one before the `|`), then calls it with all the arguments that were passed to the filter.
+
+```
+}}
+```
+
+This ends a template expression.
