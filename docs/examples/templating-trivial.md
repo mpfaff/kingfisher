@@ -1,3 +1,6 @@
+---
+---
+
 # Examples > Templating (trivial)
 
 Here is an example of template rendering. This example is rather trivial, but it should give you an idea of how templates work.

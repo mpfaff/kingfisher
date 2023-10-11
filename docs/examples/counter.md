@@ -1,3 +1,6 @@
+---
+---
+
 # Examples > Counter
 
 Here is an example of an endpoint where each request increments a counter and the value (pre-increment) is sent back to the client as the response body.
