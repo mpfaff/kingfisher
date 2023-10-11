@@ -1,5 +1,4 @@
 ---
-render_with_liquid: false
 ---
 
 # Examples > Templating (trivial)

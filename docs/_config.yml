@@ -1,2 +1,12 @@
 title: Kingfisher
-render_with_liquid: false
+
+theme: just-the-docs
+
+defaults:
+  -
+    scope:
+      # all files
+      path: ""
+    values:
+      layout: "default"
+      render_with_liquid: false
