@@ -1,7 +1,7 @@
 package kingfisher;
 
 import kingfisher.requests.RegexRouteHandler;
-import org.graalvm.polyglot.HostAccess;
+import kingfisher.scripting.Script;
 import org.graalvm.polyglot.Value;
 import kingfisher.requests.ProxyRequest;
 import kingfisher.util.JObject;
@@ -13,25 +13,27 @@ import java.util.regex.Pattern;
 import static kingfisher.Config.TRACE_SCRIPT_ENGINE;
 
 public final class InitScriptApi extends ScriptApi {
-	int scriptIndex;
+	private Script script;
 	private Object state;
 	private boolean hasSetState;
+	private final InitStagingArea staging;
 
-	public InitScriptApi(ScriptEngine engine) {
+	public InitScriptApi(ScriptEngine engine, InitStagingArea staging) {
 		super(engine);
-		this.scriptIndex = -1;
+		this.staging = staging;
 	}
 
-	@Override
-	public void setScriptIndex(int scriptIndex) {
-		super.setScriptIndex(scriptIndex);
-		this.scriptIndex = scriptIndex;
+	public void setScript(Script script) {
+		resetHandlerId();
+		this.script = script;
 		state = null;
 		hasSetState = false;
 	}
 
 	@Override
 	public Object getState(Supplier<Object> initFunction) {
+		staging.checkState();
+
 		if (hasSetState) throw new IllegalStateException("getState may be called at most once per script");
 		hasSetState = true;
 		return state = initFunction.get();
@@ -39,17 +41,19 @@ public final class InitScriptApi extends ScriptApi {
 
 	@Override
 	public void addRoute(String method, String path, Value handler) {
+		staging.checkState();
+
 		var engine = this.engine;
 		var state = this.state;
-		int scriptIndex = this.scriptIndex;
+		var script = this.script;
 		int handlerId = nextHandlerId();
-		engine.handlers.add(new RegexRouteHandler(method, Pattern.compile(path), (request, arguments, response, callback) -> {
-			Main.SCRIPT_LOGGER.info("Submitting task to process script handler on a worker thread");
+		staging.handlers.add(new RegexRouteHandler(method, Pattern.compile(path), (request, arguments, response, callback) -> {
+			Main.SCRIPT_LOGGER.log(() -> "Submitting task to process script handler on a worker thread");
 			engine.executor.submit(() -> {
-				Main.SCRIPT_LOGGER.info("Processing script handler");
+				Main.SCRIPT_LOGGER.log(() -> "Processing script handler");
 				var api = new HandlerInvocationScriptApi(engine, state, handlerId);
-				try (var ctx = engine.createScriptContext(api, scriptIndex)) {
-					engine.loadScript(ctx, scriptIndex);
+				try (var ctx = engine.createScriptContext(api, script)) {
+					engine.loadScript(ctx, script);
 
 					var start = System.currentTimeMillis();
 					long elapsed;
@@ -59,7 +63,7 @@ public final class InitScriptApi extends ScriptApi {
 
 					if (TRACE_SCRIPT_ENGINE) {
 						elapsed = System.currentTimeMillis() - start;
-						Main.SCRIPT_LOGGER.info("Handled route in " + elapsed + " ms");
+						Main.SCRIPT_LOGGER.log(() -> "Handled route in " + elapsed + " ms");
 					}
 
 					return res;

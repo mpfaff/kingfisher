@@ -1,20 +1,20 @@
 package kingfisher.util;
 
+import dev.pfaff.log4truth.Logger;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
-public final class ProxyConstantTable implements ProxyObject {
-	private static final Logger LOGGER = LoggerFactory.getLogger(ProxyConstantTable.class);
+import static dev.pfaff.log4truth.StandardTags.WARN;
 
+public final class ProxyConstantTable implements ProxyObject {
 	private final Map<String, Object> entries;
 
 	public ProxyConstantTable(Map<String, ?> entries) {
@@ -27,11 +27,11 @@ public final class ProxyConstantTable implements ProxyObject {
 				.filter(field -> {
 					var modifiers = field.getModifiers();
 					if (!Modifier.isPublic(modifiers)) {
-						LOGGER.warn("Skipping field " + field.getName() + " because it is not public");
+						Logger.log(() -> "Skipping field " + field.getName() + " because it is not public", List.of(WARN));
 						return false;
 					}
 					if (!Modifier.isFinal(modifiers)) {
-						LOGGER.warn("Skipping field " + field.getName() + " because it is not final");
+						Logger.log(() -> "Skipping field " + field.getName() + " because it is not final", List.of(WARN));
 						return false;
 					}
 					return true;

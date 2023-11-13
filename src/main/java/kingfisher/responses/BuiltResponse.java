@@ -4,8 +4,11 @@ import kingfisher.Main;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import static dev.pfaff.log4truth.StandardTags.ERROR;
 
 public record BuiltResponse(int status, Map<String, String> headers, Writer writer) {
 	public BuiltResponse {
@@ -16,13 +19,13 @@ public record BuiltResponse(int status, Map<String, String> headers, Writer writ
 		try {
 			response.setStatus(status);
 			headers.forEach(response.getHeaders()::add);
-			Main.WEB_LOGGER.info("Transmitted status and content type");
+			Main.WEB_LOGGER.log(() -> "Transmitted status and content type");
 			if (writer != null) {
 				writer.write(response, callback);
-				Main.WEB_LOGGER.info("Transmitted content");
+				Main.WEB_LOGGER.log(() -> "Transmitted content");
 			}
 		} catch (Throwable e) {
-			Main.WEB_LOGGER.error("Caught exception while transmitting response", e);
+			Main.WEB_LOGGER.log(() -> "Caught exception while transmitting response", e, List.of(ERROR));
 		}
 	}
 }

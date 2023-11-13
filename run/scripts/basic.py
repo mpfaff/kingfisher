@@ -2,7 +2,7 @@ import time
 
 state = getState(lambda: JObject({'counter': 0}))
 
-addRoute(GET, "/", lambda req, args: respond().status(200).content("Hello, World!").html().finish())
+addRoute(GET, "/hello_with_py", lambda req, args: respond().status(200).content("Hello, World!").html().finish())
 
 def handle_hello_name(req, args):
     return respond().status(200).content(render("hello_name.html", args)).html().finish()

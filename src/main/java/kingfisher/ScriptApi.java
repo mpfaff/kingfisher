@@ -3,7 +3,6 @@ package kingfisher;
 import kingfisher.responses.ResponseBuilder;
 import kingfisher.templating.ExecuteFilter;
 import kingfisher.util.JObject;
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 
 import java.io.IOException;
@@ -25,7 +24,7 @@ public abstract class ScriptApi {
 		this.engine = engine;
 	}
 
-	public void setScriptIndex(int scriptIndex) {
+	protected void resetHandlerId() {
 		this.nextHandlerId = 0;
 	}
 

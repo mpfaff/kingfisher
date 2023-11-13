@@ -1,22 +1,22 @@
 package kingfisher;
 
+import dev.pfaff.log4truth.NamedLogger;
 import io.pebbletemplates.pebble.PebbleEngine;
 import kingfisher.constants.ContentType;
 import kingfisher.constants.Header;
 import kingfisher.constants.Method;
-import kingfisher.requests.MatchingRequestHandler;
+import kingfisher.requests.CallSiteHandler;
 import kingfisher.requests.ScriptRequestHandler;
+import kingfisher.scripting.Script;
 import kingfisher.templating.FileLoader;
 import kingfisher.templating.OurExtension;
 import kingfisher.util.ProxyConstantTable;
-import org.graalvm.polyglot.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.event.Level;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Value;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
+import java.lang.invoke.MutableCallSite;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -27,7 +27,9 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.stream.Collectors;
 
-import static kingfisher.Config.*;
+import static dev.pfaff.log4truth.StandardTags.*;
+import static kingfisher.Config.TEMPLATES_DIR;
+import static kingfisher.Config.TRACE_SCRIPT_ENGINE;
 
 public final class ScriptEngine {
 	private final Engine engine = Engine.newBuilder("js", "python", "llvm", "wasm")
@@ -37,7 +39,8 @@ public final class ScriptEngine {
 			.keySet()
 			.stream()
 			.collect(Collectors.toMap(Function.identity(), this::makeBuilder));
-	public final Context.Builder allLangContextBuilder = makeBuilder(engine.getLanguages().keySet().toArray(String[]::new));
+	public final Context.Builder allLangContextBuilder =
+			makeBuilder(engine.getLanguages().keySet().toArray(String[]::new));
 
 	private Context.Builder makeBuilder(String... languages) {
 		return Context.newBuilder(languages)
@@ -69,38 +72,10 @@ public final class ScriptEngine {
 			.loader(new FileLoader(TEMPLATES_DIR))
 			.extension(new OurExtension(this))
 			.build();
-	public final List<MatchingRequestHandler> handlers = new ArrayList<>();
-	private final List<Source> sources;
-
-	public ScriptEngine() throws IOException {
-		try (var stream = Files.list(SCRIPTS_DIR)) {
-			sources = stream.map(scriptPath -> {
-						var file = scriptPath.toFile();
-						try {
-							var source = Source.newBuilder(Source.findLanguage(file),
-									Files.readString(scriptPath),
-									scriptPath.toString()).build();
-							Main.SCRIPT_LOGGER.info("Read script " + scriptPath);
-							return source;
-						} catch (Throwable e) {
-							Main.SCRIPT_LOGGER.error("Unable to read script " + scriptPath, e);
-							return null;
-						}
-					})
-					.toList();
-		} catch (Throwable e) {
-			Main.SCRIPT_LOGGER.error("Unable to read scripts", e);
-			throw e;
-		}
-	}
-
-	public int scriptCount() {
-		return sources.size();
-	}
+	public final MutableCallSite handler = new MutableCallSite(CallSiteHandler.chainHandlers(List.of()));
 
 	private void setupBindings(Context ctx, String lang, Value scriptApi) {
 		var start = System.currentTimeMillis();
-		long elapsed;
 
 		// these don't support getBindings().putMember()
 		if ("llvm".equals(lang)) return;
@@ -113,8 +88,10 @@ public final class ScriptEngine {
 		var bindings = ctx.getBindings(lang);
 
 		if (TRACE_SCRIPT_ENGINE) {
-			elapsed = System.currentTimeMillis() - start;
-			Main.SCRIPT_LOGGER.info("Got bindings object for '" + lang + "' in " + elapsed + " ms");
+			long now = System.currentTimeMillis();
+			long elapsed = now - start;
+			Main.SCRIPT_LOGGER.log(() -> "Got bindings object for '" + lang + "' in " + elapsed + " ms");
+			start = now;
 		}
 
 		if (!bindings.hasMembers()) return;
@@ -132,11 +109,13 @@ public final class ScriptEngine {
 			CONSTANT_BINDINGS.forEach(bindings::putMember);
 
 			if (TRACE_SCRIPT_ENGINE) {
-				elapsed = System.currentTimeMillis() - start;
-				Main.SCRIPT_LOGGER.info("Setup bindings for '" + lang + "' in " + elapsed + " ms");
+				long now = System.currentTimeMillis();
+				long elapsed = now - start;
+				Main.SCRIPT_LOGGER.log(() -> "Setup bindings for '" + lang + "' in " + elapsed + " ms");
+				start = now;
 			}
 		} catch (Throwable e) {
-			Main.SCRIPT_LOGGER.error("Caught exception while binding api for language " + lang, e);
+			Main.SCRIPT_LOGGER.log(() -> "Caught exception while binding api for language " + lang, e, List.of(ERROR));
 			throw e;
 		}
 	}
@@ -158,8 +137,8 @@ public final class ScriptEngine {
 		}
 	}
 
-	public Context createScriptContext(ScriptApi api, int scriptIndex) {
-		var lang = sources.get(scriptIndex).getLanguage();
+	public Context createScriptContext(ScriptApi api, Script script) {
+		var lang = script.source().getLanguage();
 
 		var ctx = langContextBuilders.get(lang).build();
 
@@ -175,42 +154,38 @@ public final class ScriptEngine {
 		}
 	}
 
-	public void loadScript(Context ctx, int scriptIndex) {
+	public void loadScript(Context ctx, Script script) {
 		var start = System.currentTimeMillis();
 		long elapsed;
 
-		var source = sources.get(scriptIndex);
-
 		try {
-			ctx.eval(source);
+			ctx.eval(script.source());
 
 			elapsed = System.currentTimeMillis() - start;
-			Main.SCRIPT_LOGGER.info("Loaded script " + source.getName() + " in " + elapsed + " ms");
+			Main.SCRIPT_LOGGER.log(() -> "Loaded script " + script.name() + " in " + elapsed + " ms");
 		} catch (Throwable e) {
-			Main.SCRIPT_LOGGER.error("Unable to load script " + source.getName(), e);
+			Main.SCRIPT_LOGGER.log(() -> "Unable to load script " + script.name(), e, List.of(ERROR));
 		}
 	}
 
 	private static class PolyglotLogHandler extends Handler {
-		private static final Logger LOGGER = LoggerFactory.getLogger("Polyglot Engine");
+		private static final NamedLogger LOGGER = new NamedLogger("Polyglot Engine");
 
 		@Override
 		public void publish(LogRecord record) {
 			var levelIn = record.getLevel();
-			Level level;
+			String level;
 			if (levelIn == java.util.logging.Level.OFF) return;
-			else if (levelIn == java.util.logging.Level.SEVERE) level = Level.ERROR;
-			else if (levelIn == java.util.logging.Level.WARNING) level = Level.WARN;
-			else if (levelIn == java.util.logging.Level.INFO) level = Level.INFO;
-			else if (levelIn == java.util.logging.Level.CONFIG) level = Level.DEBUG;
-			else if (levelIn == java.util.logging.Level.FINE) level = Level.DEBUG;
-			else if (levelIn == java.util.logging.Level.FINER) level = Level.DEBUG;
-			else if (levelIn == java.util.logging.Level.FINEST) level = Level.DEBUG;
+			else if (levelIn == java.util.logging.Level.SEVERE) level = ERROR;
+			else if (levelIn == java.util.logging.Level.WARNING) level = WARN;
+			else if (levelIn == java.util.logging.Level.INFO) level = INFO;
+			else if (levelIn == java.util.logging.Level.CONFIG) level = DEBUG;
+			else if (levelIn == java.util.logging.Level.FINE) level = DEBUG;
+			else if (levelIn == java.util.logging.Level.FINER) level = DEBUG;
+			else if (levelIn == java.util.logging.Level.FINEST) level = DEBUG;
 			else if (levelIn == java.util.logging.Level.ALL) return;
 			else return;
-			LOGGER.makeLoggingEventBuilder(level)
-					.setCause(record.getThrown())
-					.log(record.getMessage());
+			LOGGER.log(record::getMessage, record.getThrown(), List.of(level));
 		}
 
 		@Override
