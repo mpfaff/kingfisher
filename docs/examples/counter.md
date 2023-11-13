@@ -9,7 +9,7 @@ Here is an example of an endpoint where each request increments a counter and th
 In **Javascript**:
 
 ```js
-state = getState(() => ConcObject({counter: 0}));
+state = getState(() => JObject({counter: 0}));
 
 addRoute(GET, "/count", req => {
     let count = state.counter++
