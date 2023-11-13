@@ -29,4 +29,12 @@ jobs:
     - name: Build with Gradle
       uses: gradle/gradle-build-action@bd5760595778326ba7f1441bcf7e88b49de61a25 # v2.6.0
       with:
-        arguments: build
+        arguments: --no-daemon build
+        cache-read-only: false
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3.1.3
+      with:
+        name: kingfisher.jar
+        path: build/libs/kingfisher-*.jar
+        if-no-files-found: error
+        retention-days: 90
