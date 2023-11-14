@@ -1,14 +1,17 @@
 package kingfisher;
 
+import dev.pfaff.log4truth.Logger;
 import kingfisher.responses.ResponseBuilder;
+import kingfisher.scripting.Script;
 import kingfisher.templating.ExecuteFilter;
-import kingfisher.util.JObject;
+import kingfisher.interop.JObject;
 import org.graalvm.polyglot.Value;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -31,6 +34,8 @@ public abstract class ScriptApi {
 	protected int nextHandlerId() {
 		return nextHandlerId++;
 	}
+
+	protected abstract Script script();
 
 	/**
 	 * Scripts are reevaluated for each request, so they need a way to share state.
@@ -102,5 +107,13 @@ public abstract class ScriptApi {
 			}
 		}
 		return wtr.toString();
+	}
+
+	public void print(Object o) {
+		Logger.log("Script[" + script() + "]", () -> Objects.toString(o));
+	}
+
+	public String getMetaQualifiedName(Value value) {
+		return value.getMetaObject().getMetaQualifiedName();
 	}
 }

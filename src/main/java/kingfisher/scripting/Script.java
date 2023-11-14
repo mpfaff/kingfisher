@@ -6,4 +6,9 @@ public record Script(Source source) {
 	public String name() {
 		return source.getName();
 	}
+
+	@Override
+	public String toString() {
+		return name();
+	}
 }

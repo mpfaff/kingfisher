@@ -1,7 +1,7 @@
 package kingfisher.requests;
 
 import kingfisher.responses.BuiltResponse;
-import kingfisher.util.JObject;
+import kingfisher.interop.JObject;
 import org.graalvm.polyglot.HostAccess;
 
 @FunctionalInterface

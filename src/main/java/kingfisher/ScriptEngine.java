@@ -5,18 +5,18 @@ import io.pebbletemplates.pebble.PebbleEngine;
 import kingfisher.constants.ContentType;
 import kingfisher.constants.Header;
 import kingfisher.constants.Method;
+import kingfisher.interop.ProxyConstantTable;
+import kingfisher.interop.js.JSImplementations;
+import kingfisher.interop.js.JSNodeFS;
 import kingfisher.requests.CallSiteHandler;
 import kingfisher.requests.ScriptRequestHandler;
 import kingfisher.scripting.Script;
 import kingfisher.templating.FileLoader;
 import kingfisher.templating.OurExtension;
-import kingfisher.util.ProxyConstantTable;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.*;
 
 import java.lang.invoke.MutableCallSite;
+import java.net.http.HttpClient;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 import static dev.pfaff.log4truth.StandardTags.*;
 import static kingfisher.Config.TEMPLATES_DIR;
 import static kingfisher.Config.TRACE_SCRIPT_ENGINE;
+import static kingfisher.util.Timing.formatTime;
 
 public final class ScriptEngine {
 	private final Engine engine = Engine.newBuilder("js", "python", "llvm", "wasm")
@@ -41,6 +42,11 @@ public final class ScriptEngine {
 			.collect(Collectors.toMap(Function.identity(), this::makeBuilder));
 	public final Context.Builder allLangContextBuilder =
 			makeBuilder(engine.getLanguages().keySet().toArray(String[]::new));
+	public final ExecutorService ioExecutor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("I/O", 0).factory());
+	public final ExecutorService httpClientExecutor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("HttpClient", 0).factory());
+	public final HttpClient httpClient = HttpClient.newBuilder()
+			.executor(httpClientExecutor)
+			.build();
 
 	private Context.Builder makeBuilder(String... languages) {
 		return Context.newBuilder(languages)
@@ -74,8 +80,8 @@ public final class ScriptEngine {
 			.build();
 	public final MutableCallSite handler = new MutableCallSite(CallSiteHandler.chainHandlers(List.of()));
 
-	private void setupBindings(Context ctx, String lang, Value scriptApi) {
-		var start = System.currentTimeMillis();
+	private void setupBindings(Context ctx, String lang, Value scriptApi, Map<String, Value> modules) {
+		var start = System.nanoTime();
 
 		// these don't support getBindings().putMember()
 		if ("llvm".equals(lang)) return;
@@ -87,10 +93,16 @@ public final class ScriptEngine {
 		// combined with the size of the python standard library being imported.
 		var bindings = ctx.getBindings(lang);
 
+		if ("js".equals(lang)) {
+			for (Source function : JSImplementations.functions) {
+				bindings.putMember(function.getName(), ctx.eval(function));
+			}
+		}
+
 		if (TRACE_SCRIPT_ENGINE) {
-			long now = System.currentTimeMillis();
+			long now = System.nanoTime();
 			long elapsed = now - start;
-			Main.SCRIPT_LOGGER.log(() -> "Got bindings object for '" + lang + "' in " + elapsed + " ms");
+			Main.SCRIPT_LOGGER.log(() -> "Got bindings object for '" + lang + "' in " + formatTime(elapsed));
 			start = now;
 		}
 
@@ -101,6 +113,10 @@ public final class ScriptEngine {
 				bindings.putMember(member, scriptApi.getMember(member));
 			}
 
+			for (var module : modules.entrySet()) {
+				bindings.putMember(module.getKey(), module.getValue());
+			}
+
 			// these are commonly used enough to warrant them being unscoped...
 			for (var method : List.of(Method.GET, Method.POST, Method.PUT, Method.POST, Method.DELETE, Method.HEAD)) {
 				bindings.putMember(method, method);
@@ -109,9 +125,9 @@ public final class ScriptEngine {
 			CONSTANT_BINDINGS.forEach(bindings::putMember);
 
 			if (TRACE_SCRIPT_ENGINE) {
-				long now = System.currentTimeMillis();
+				long now = System.nanoTime();
 				long elapsed = now - start;
-				Main.SCRIPT_LOGGER.log(() -> "Setup bindings for '" + lang + "' in " + elapsed + " ms");
+				Main.SCRIPT_LOGGER.log(() -> "Setup bindings for '" + lang + "' in " + formatTime(elapsed));
 				start = now;
 			}
 		} catch (Throwable e) {
@@ -120,14 +136,14 @@ public final class ScriptEngine {
 		}
 	}
 
-	public Context createScriptContext(ScriptApi api) {
+	public Context createScriptContext(InitScriptApi api) {
 		var ctx = allLangContextBuilder.build();
 
-		var scriptApi = ctx.asValue(api);
-
 		try {
+			var scriptApi = ctx.asValue(api);
+
 			for (var lang : engine.getLanguages().keySet()) {
-				setupBindings(ctx, lang, scriptApi);
+				setupBindings(ctx, lang, scriptApi, Map.of());
 			}
 
 			return ctx;
@@ -137,15 +153,13 @@ public final class ScriptEngine {
 		}
 	}
 
-	public Context createScriptContext(ScriptApi api, Script script) {
-		var lang = script.source().getLanguage();
+	public Context createScriptContext(HandlerInvocationScriptApi api) {
+		var lang = api.script().source().getLanguage();
 
 		var ctx = langContextBuilders.get(lang).build();
 
-		var scriptApi = ctx.asValue(api);
-
 		try {
-			setupBindings(ctx, lang, scriptApi);
+			setupBindings(ctx, lang, ctx.asValue(api), Map.of("fs", ctx.asValue(new JSNodeFS(api.thread))));
 
 			return ctx;
 		} catch (Throwable e) {
@@ -155,14 +169,14 @@ public final class ScriptEngine {
 	}
 
 	public void loadScript(Context ctx, Script script) {
-		var start = System.currentTimeMillis();
+		var start = System.nanoTime();
 		long elapsed;
 
 		try {
 			ctx.eval(script.source());
 
-			elapsed = System.currentTimeMillis() - start;
-			Main.SCRIPT_LOGGER.log(() -> "Loaded script " + script.name() + " in " + elapsed + " ms");
+			elapsed = System.nanoTime() - start;
+			Main.SCRIPT_LOGGER.log(() -> "Loaded script " + script.name() + " in " + formatTime(elapsed));
 		} catch (Throwable e) {
 			Main.SCRIPT_LOGGER.log(() -> "Unable to load script " + script.name(), e, List.of(ERROR));
 		}

@@ -1,4 +1,4 @@
-package kingfisher.util;
+package kingfisher.interop;
 
 import dev.pfaff.log4truth.Logger;
 import org.graalvm.polyglot.Value;

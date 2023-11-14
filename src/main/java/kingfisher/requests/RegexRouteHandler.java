@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 public record RegexRouteHandler(String method, Pattern pattern, RequestHandler handler) implements MatchingRequestHandler {
 	@Override
 	public boolean handle(Request request, Response response, Callback callback) throws Exception {
+		if (!request.getMethod().equals(method)) return false;
 		var matcher = pattern.matcher(request.getHttpURI().getCanonicalPath());
 		if (!matcher.matches()) return false;
 		handler.handle(request,

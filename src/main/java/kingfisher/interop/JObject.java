@@ -1,4 +1,4 @@
-package kingfisher.util;
+package kingfisher.interop;
 
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;

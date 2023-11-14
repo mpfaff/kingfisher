@@ -32,7 +32,11 @@ public final class ScriptLoader {
 
 	public void launch() {
 		new Thread(() -> {
-			activateScripts();
+			try {
+				activateScripts();
+			} catch (Exception e) {
+				SCRIPT_LOGGER.log(() -> "Caught exception while activating scripts", e, List.of(ERROR));
+			}
 
 			try {
 				if (USE_WATCHER) {
@@ -58,18 +62,23 @@ public final class ScriptLoader {
 			} catch (IOException e) {
 				SCRIPT_LOGGER.log(() -> "Unable to launch hot reload service", e, List.of(ERROR));
 			} catch (InterruptedException e) {
-				throw new RuntimeException(e);
+				SCRIPT_LOGGER.log(() -> "Hot reload service interrupted", e, List.of(ERROR));
 			}
 		}).start();
 	}
 
 	private void hotReload() {
 		SCRIPT_LOGGER.log(() -> "Change detected. Hot reloading scripts", List.of(WARN));
-		activateScripts();
-		SCRIPT_LOGGER.log(() -> "Hot reload complete!", List.of(WARN));
+		try {
+			activateScripts();
+			engine.pebble.getTemplateCache().invalidateAll();
+			SCRIPT_LOGGER.log(() -> "Hot reload complete!", List.of(WARN));
+		} catch (Exception e) {
+			SCRIPT_LOGGER.log(() -> "Caught exception while hot reloading scripts", e, List.of(ERROR));
+		}
 	}
 
-	private void activateScripts() {
+	private void activateScripts() throws Exception {
 		var staging = new InitStagingArea();
 		var api = new InitScriptApi(engine, staging);
 		try (var ctx = engine.createScriptContext(api)) {
@@ -77,8 +86,6 @@ public final class ScriptLoader {
 				api.setScript(script);
 				engine.loadScript(ctx, script);
 			}
-		} catch (IOException e) {
-			throw new RuntimeException(e);
 		}
 		staging.complete();
 		engine.handler.setTarget(CallSiteHandler.chainHandlers(staging.handlers));

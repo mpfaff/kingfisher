@@ -39,6 +39,8 @@ public final class CallSiteHandler extends Handler.Abstract {
 	public boolean handle(Request request, Response response, Callback callback) throws Exception {
 		try {
 			return (boolean) callSite.getTarget().invokeExact(request, response, callback);
+		} catch (Exception e) {
+			throw e;
 		} catch (Throwable e) {
 			throw new RuntimeException(e);
 		}

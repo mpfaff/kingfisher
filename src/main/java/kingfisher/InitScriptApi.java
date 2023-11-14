@@ -2,15 +2,17 @@ package kingfisher;
 
 import kingfisher.requests.RegexRouteHandler;
 import kingfisher.scripting.Script;
+import kingfisher.scripting.ScriptThread;
 import org.graalvm.polyglot.Value;
 import kingfisher.requests.ProxyRequest;
-import kingfisher.util.JObject;
+import kingfisher.interop.JObject;
 
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 import static kingfisher.Config.TRACE_SCRIPT_ENGINE;
+import static kingfisher.util.Timing.formatTime;
 
 public final class InitScriptApi extends ScriptApi {
 	private Script script;
@@ -28,6 +30,11 @@ public final class InitScriptApi extends ScriptApi {
 		this.script = script;
 		state = null;
 		hasSetState = false;
+	}
+
+	@Override
+	protected Script script() {
+		return script;
 	}
 
 	@Override
@@ -51,24 +58,32 @@ public final class InitScriptApi extends ScriptApi {
 			Main.SCRIPT_LOGGER.log(() -> "Submitting task to process script handler on a worker thread");
 			engine.executor.submit(() -> {
 				Main.SCRIPT_LOGGER.log(() -> "Processing script handler");
-				var api = new HandlerInvocationScriptApi(engine, state, handlerId);
-				try (var ctx = engine.createScriptContext(api, script)) {
-					engine.loadScript(ctx, script);
+				var thread = new ScriptThread(engine);
+				var api = new HandlerInvocationScriptApi(thread, script, state, handlerId);
+				try (var ctx = engine.createScriptContext(api)) {
+					ctx.enter();
+					try {
+						engine.loadScript(ctx, script);
 
-					var start = System.currentTimeMillis();
-					long elapsed;
+						var start = System.nanoTime();
+						long elapsed;
 
-					//noinspection unchecked,rawtypes
-					var res = api.handler.handle(new ProxyRequest(request), new JObject((Map<String, Object>) (Map) arguments));
+						//noinspection unchecked,rawtypes
+						var res = api.handler.handle(new ProxyRequest(request), new JObject((Map<String, Object>) (Map) arguments));
 
-					if (TRACE_SCRIPT_ENGINE) {
-						elapsed = System.currentTimeMillis() - start;
-						Main.SCRIPT_LOGGER.log(() -> "Handled route in " + elapsed + " ms");
+						if (res == null) {
+							throw new NullPointerException("Script returned null response object");
+						}
+
+						if (TRACE_SCRIPT_ENGINE) {
+							elapsed = System.nanoTime() - start;
+							Main.SCRIPT_LOGGER.log(() -> "Handled route in " + formatTime(elapsed));
+						}
+
+						return res;
+					} finally {
+						ctx.leave();
 					}
-
-					return res;
-				} catch (Throwable e) {
-					throw new RuntimeException(e);
 				}
 			}).get().send(response, callback);
 		}));

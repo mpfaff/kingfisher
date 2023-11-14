@@ -1,0 +1,7 @@
+<h1>There are {{todos|length}} TODOs.</h1>
+
+<ul>
+{% for todo in todos %}
+    <li><strong>{{ todo.state }}</strong>: {{ todo.content }}</li>
+{% endfor %}
+</ul>
