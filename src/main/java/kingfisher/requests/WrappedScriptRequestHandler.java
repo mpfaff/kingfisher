@@ -18,9 +18,9 @@ import static kingfisher.Main.SCRIPT_LOGGER;
 
 public final class WrappedScriptRequestHandler {
 	private final EventLoop thread;
-	private final ScriptRequestHandler handler;
+	private final ScriptRouteHandler handler;
 
-	public WrappedScriptRequestHandler(EventLoop eventLoop, ScriptRequestHandler handler) {
+	public WrappedScriptRequestHandler(EventLoop eventLoop, ScriptRouteHandler handler) {
 		this.thread = eventLoop;
 		this.handler = handler;
 	}

@@ -33,7 +33,7 @@ public final class RequestScriptThread extends ScriptThread {
 		private Api() {}
 
 		@Override
-		public void addRoute(String method, String path, ScriptRequestHandler handler) {
+		public void addRoute(String method, String path, ScriptRouteHandler handler) {
 			if (nextHandlerId() == targetHandler) {
 				RequestScriptThread.this.handler = new WrappedScriptRequestHandler(RequestScriptThread.this.eventLoop, handler);
 			}

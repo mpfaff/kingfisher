@@ -2,7 +2,6 @@ package kingfisher.responses;
 
 import kingfisher.constants.ContentType;
 import kingfisher.constants.Header;
-import org.graalvm.polyglot.HostAccess;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,7 +10,7 @@ import java.util.Objects;
 public final class ResponseBuilder {
 	private int status = 200;
 	private Map<String, String> headers = null;
-	private Writer writer = null;
+	private Writable writable = null;
 
 	/**
 	 * Sets the status code of the response.
@@ -22,25 +21,25 @@ public final class ResponseBuilder {
 	}
 
 	/**
-	 * Sets the bytes writer of the response.
+	 * Sets the body of the response.
 	 */
-	public ResponseBuilder content(Writer writer) {
-		this.writer = writer;
+	public ResponseBuilder content(Writable writable) {
+		this.writable = writable;
 		return this;
 	}
 
 	/**
-	 * Sets the bytes of the response to a writer wrapping the provided byte array.
+	 * Sets the body of the response to a {@link Writable} wrapping the provided byte array.
 	 */
 	public ResponseBuilder content(byte[] content) {
-		return content(Writer.bytesWriter(content));
+		return content(Writable.bytesWriter(content));
 	}
 
 	/**
-	 * Sets the bytes of the response to a writer wrapping the provided string.
+	 * Sets the body of the response to a {@link Writable} wrapping the provided string.
 	 */
 	public ResponseBuilder content(String content) {
-		return content(Writer.stringWriter(content));
+		return content(Writable.stringWriter(content));
 	}
 
 	private Map<String, String> getHeaders() {
@@ -65,7 +64,7 @@ public final class ResponseBuilder {
 	}
 
 	/**
-	 * Appends the Content-Type header to the response.
+	 * Appends the {@code Content-Type} header to the response.
 	 */
 	public ResponseBuilder contentType(String value) {
 		return header(Header.CONTENT_TYPE, value);
@@ -76,13 +75,13 @@ public final class ResponseBuilder {
 	}
 
 	/**
-	 * Appends the Location header to the response.
+	 * Appends the {@code Location} header to the response.
 	 */
 	public ResponseBuilder location(String value) {
 		return header(Header.LOCATION, value);
 	}
 
 	public BuiltResponse finish() {
-		return new BuiltResponse(status, Objects.requireNonNullElseGet(headers, Map::of), writer);
+		return new BuiltResponse(status, Objects.requireNonNullElseGet(headers, Map::of), writable);
 	}
 }

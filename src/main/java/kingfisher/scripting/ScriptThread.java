@@ -9,7 +9,7 @@ import kingfisher.interop.Exports;
 import kingfisher.interop.JObject;
 import kingfisher.interop.ProxyConstantTable;
 import kingfisher.interop.js.JSApi;
-import kingfisher.requests.ScriptRequestHandler;
+import kingfisher.requests.ScriptRouteHandler;
 import kingfisher.templating.ExecuteFilter;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
@@ -157,6 +157,6 @@ public abstract class ScriptThread {
 		 * @param path the url path pattern to match. This is a {@link java.util.regex.Pattern regular expression}.
 		 * @param handler the handler for the route.
 		 */
-		public abstract void addRoute(String method, String path, ScriptRequestHandler handler);
+		public abstract void addRoute(String method, String path, ScriptRouteHandler handler);
 	}
 }

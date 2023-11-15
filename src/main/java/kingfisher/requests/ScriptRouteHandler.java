@@ -4,8 +4,10 @@ import kingfisher.interop.JObject;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 
+/**
+ * A route handler implemented by a script.
+ */
 @FunctionalInterface
-@HostAccess.Implementable
-public interface ScriptRequestHandler {
+public interface ScriptRouteHandler {
 	Value handle(HttpServerRequest request, JObject arguments) throws Throwable;
 }

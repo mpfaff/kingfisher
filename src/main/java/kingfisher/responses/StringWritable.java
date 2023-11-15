@@ -5,13 +5,13 @@ import org.eclipse.jetty.util.Callback;
 
 import java.util.Objects;
 
-public record StringWriter(String string) implements Writer {
-	public StringWriter {
+public record StringWritable(String string) implements Writable {
+	public StringWritable {
 		Objects.requireNonNull(string);
 	}
 
 	@Override
-	public void write(Content.Sink sink, Callback callback) {
+	public void writeTo(Content.Sink sink, Callback callback) {
 		Content.Sink.write(sink, true, string, callback);
 	}
 }

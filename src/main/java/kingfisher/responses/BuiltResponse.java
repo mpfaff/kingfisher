@@ -13,7 +13,7 @@ import java.util.Objects;
 
 import static dev.pfaff.log4truth.StandardTags.ERROR;
 
-public record BuiltResponse(int status, Map<String, String> headers, Writer writer) {
+public record BuiltResponse(int status, Map<String, String> headers, Writable writable) {
 	public BuiltResponse {
 		Objects.requireNonNull(headers);
 	}
@@ -37,8 +37,8 @@ public record BuiltResponse(int status, Map<String, String> headers, Writer writ
 			response.setStatus(status);
 			headers.forEach(response.getHeaders()::add);
 			Main.WEB_LOGGER.log(() -> "Transmitted status and content type");
-			if (writer != null) {
-				writer.write(response, callback);
+			if (writable != null) {
+				writable.writeTo(response, callback);
 				Main.WEB_LOGGER.log(() -> "Transmitted content");
 			}
 		} catch (Throwable e) {

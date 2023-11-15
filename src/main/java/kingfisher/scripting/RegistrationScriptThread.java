@@ -6,7 +6,7 @@ import kingfisher.interop.JObject;
 import kingfisher.requests.HttpServerRequest;
 import kingfisher.requests.RegexRouteHandler;
 import kingfisher.requests.RequestScriptThread;
-import kingfisher.requests.ScriptRequestHandler;
+import kingfisher.requests.ScriptRouteHandler;
 import org.graalvm.polyglot.Value;
 
 import java.util.List;
@@ -48,7 +48,7 @@ public final class RegistrationScriptThread extends ScriptThread {
 		private Api() {}
 
 		@Override
-		public void addRoute(String method, String path, ScriptRequestHandler handler) {
+		public void addRoute(String method, String path, ScriptRouteHandler handler) {
 			var engine = RegistrationScriptThread.this.engine;
 			var script = RegistrationScriptThread.this.script;
 			var staging = RegistrationScriptThread.this.staging;

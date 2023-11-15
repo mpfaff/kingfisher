@@ -4,7 +4,7 @@ import dev.pfaff.log4truth.NamedLogger;
 import io.pebbletemplates.pebble.PebbleEngine;
 import kingfisher.interop.js.JSImplementations;
 import kingfisher.requests.CallSiteHandler;
-import kingfisher.requests.ScriptRequestHandler;
+import kingfisher.requests.ScriptRouteHandler;
 import kingfisher.scripting.Script;
 import kingfisher.scripting.ScriptThread;
 import kingfisher.templating.FileLoader;
@@ -65,7 +65,7 @@ public final class ScriptEngine {
 						.methodScoping(false)
 						.allowPublicAccess(true)
 						.allowImplementations(Supplier.class)
-						.allowImplementations(ScriptRequestHandler.class)
+						.allowImplementations(ScriptRouteHandler.class)
 						.build())
 				.engine(engine);
 	}

@@ -10,6 +10,9 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.locks.LockSupport;
 
+/**
+ * A request from a client to the HTTP server.
+ */
 public final class HttpServerRequest {
 	private final ScriptThread thread;
 	private final Request request;
