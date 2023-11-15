@@ -13,4 +13,4 @@ Scripts must register themselves to handle various events. See [the Javadoc]({{ 
 
 ## Request handling
 
-See [the Javadoc]{{ 'javadoc/kingfisher/requests/RequestScriptThread.Api.html' | relative_url }}.
+See [the Javadoc]({{ 'javadoc/kingfisher/requests/RequestScriptThread.Api.html' | relative_url }}).
