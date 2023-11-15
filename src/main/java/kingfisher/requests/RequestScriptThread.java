@@ -29,6 +29,9 @@ public final class RequestScriptThread extends ScriptThread {
 		return script;
 	}
 
+	/**
+	 * The API available to each script when it is executed to handle a request.
+	 */
 	public final class Api extends BaseApi {
 		private Api() {}
 
@@ -39,12 +42,18 @@ public final class RequestScriptThread extends ScriptThread {
 			}
 		}
 
+		/**
+		 * Returns a new {@link ResponseBuilder} with the default status code of {@value kingfisher.constants.Status#OK}.
+		 */
 		public ResponseBuilder respond() {
 			return new ResponseBuilder();
 		}
 
+		/**
+		 * Returns a new {@link ResponseBuilder} with the specified status code.
+		 */
 		public ResponseBuilder respond(int status) {
-			return respond().status(status);
+			return new ResponseBuilder(status);
 		}
 	}
 }

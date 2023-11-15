@@ -44,6 +44,9 @@ public final class RegistrationScriptThread extends ScriptThread {
 		this.script = script;
 	}
 
+	/**
+	 * The API available to each script during the registration phase.
+	 */
 	public final class Api extends BaseApi {
 		private Api() {}
 

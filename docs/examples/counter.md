@@ -13,7 +13,7 @@ state = getState(() => JObject({counter: 0}));
 
 addRoute(GET, "/count", req => {
     let count = state.counter++
-    return respond().status(200).content(count.toString()).html().finish()
+    return respond().content(count.toString()).html().finish()
 });
 ```
 

@@ -18,7 +18,6 @@ addRoute(GET, "/todos", async req => {
     let todos = await loadTodos();
     try {
         return respond()
-            .status(200)
             .content(render("todos.html", {todos}))
             .finish();
     } catch (e) {
@@ -34,8 +33,7 @@ addRoute(POST, "/todos", async req => {
         todos.push({content, state: "todo"});
         await fs.mkdir("data");
         await fs.writeFile("data/todos.json", JSON.stringify(todos));
-        return respond()
-            .status(201)
+        return respond(201)
             .content(`Added.`)
             .finish();
     } catch (e) {

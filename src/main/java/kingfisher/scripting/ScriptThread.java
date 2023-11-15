@@ -52,14 +52,17 @@ public abstract class ScriptThread {
 
 		scope.putMember("JObject", JObject.class);
 		// Non-thread-safe map type. With proper synchronization, this may be used from multiple threads.
-		scope.putMember("JMap", (ProxyInstantiable) arguments -> ApiConstants.mapFromObject(arguments[0], HashMap::new));
+		scope.putMember("JMap",
+				(ProxyInstantiable) arguments -> ApiConstants.mapFromObject(arguments[0], HashMap::new));
 		// Thread-safe map type.
-		scope.putMember("ConcurrentMap", (ProxyInstantiable) arguments -> ApiConstants.mapFromObject(arguments[0], ConcurrentHashMap::new));
+		scope.putMember("ConcurrentMap",
+				(ProxyInstantiable) arguments -> ApiConstants.mapFromObject(arguments[0], ConcurrentHashMap::new));
 
 		Exports.objectMembers(new Api()).export(scope);
 		switch (lang) {
 			case "js" -> Exports.objectMembers(new JSApi(eventLoop)).export(scope);
-			default -> {}
+			default -> {
+			}
 		}
 	}
 
@@ -89,18 +92,25 @@ public abstract class ScriptThread {
 					pValue.getMemberKeys().forEach(key -> map.put(key, pValue.getMember(key)));
 				}
 				case Map<?, ?> mapIn -> map.putAll(mapIn);
-				default -> throw new IllegalArgumentException("Cannot make a concurrent object from provided value: " + obj);
+				default ->
+						throw new IllegalArgumentException("Cannot make a concurrent object from provided value: " + obj);
 			}
 			return map;
 		}
 	}
 
+	/**
+	 * Core API available to scripts regardless of context.
+	 *
+	 * @see BaseApi
+	 */
 	public final class Api {
 		private static final ProxyConstantTable CONTENT_TYPE = new ProxyConstantTable(ContentType.class);
 		private static final ProxyConstantTable HEADER = new ProxyConstantTable(Header.class);
 		private static final ProxyConstantTable METHOD = new ProxyConstantTable(Method.class);
 
-		private Api() {}
+		private Api() {
+		}
 
 		public final ProxyConstantTable ContentType = CONTENT_TYPE;
 		public final ProxyConstantTable Header = HEADER;
@@ -109,13 +119,22 @@ public abstract class ScriptThread {
 		/**
 		 * Scripts are reevaluated for each request, so they need a way to share state.
 		 * <p>
-		 * For each script that calls this method, {@code initFunction} will be run once during initialization, and then
+		 * For each script that calls this method, {@code initFunction} will be run once during initialization, and
+		 * then
 		 * the value will be stored and returned when the script is reevaluated on each request.
 		 */
 		public Object getState(Supplier<Object> initFunction) {
 			return script().getState(initFunction);
 		}
 
+		/**
+		 * Renders the specified template with the provided context.
+		 *
+		 * @param templateName the name of the template, including any path elements and file extension, relative to
+		 *                     the configured template folder.
+		 * @param context      key-value pairs that will be available to the template as variables
+		 * @return the rendered template
+		 */
 		public String render(String templateName, Map<String, Object> context) throws IOException {
 			var wtr = new StringWriter();
 			var tmpl = engine.pebble.getTemplate(templateName);
@@ -125,7 +144,8 @@ public abstract class ScriptThread {
 				var value = ExecuteFilter.CONTEXT.get();
 				if (value != null) {
 					try {
-						// docs for ctx.close() say that ctx.leave() is called automatically when it is closed, but that does not
+						// docs for ctx.close() say that ctx.leave() is called automatically when it is closed, but
+						// that does not
 						// seem to happen.
 						value.leave();
 					} finally {
@@ -146,15 +166,19 @@ public abstract class ScriptThread {
 	}
 
 	/**
-	 * The API available to the script.
+	 * Core API available to the script whose implementation is context-sensitive.
+	 *
+	 * @see Api
 	 */
 	public abstract class BaseApi {
-		protected BaseApi() {}
+		protected BaseApi() {
+		}
 
 		/**
 		 * Registers a handler for the specified route.
-		 * @param method the HTTP method to match. See {@link Method}.
-		 * @param path the url path pattern to match. This is a {@link java.util.regex.Pattern regular expression}.
+		 *
+		 * @param method  the HTTP method to match. See {@link Method}.
+		 * @param path    the url path pattern to match. This is a {@link java.util.regex.Pattern regular expression}.
 		 * @param handler the handler for the route.
 		 */
 		public abstract void addRoute(String method, String path, ScriptRouteHandler handler);

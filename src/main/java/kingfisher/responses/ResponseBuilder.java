@@ -2,15 +2,24 @@ package kingfisher.responses;
 
 import kingfisher.constants.ContentType;
 import kingfisher.constants.Header;
+import kingfisher.constants.Status;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 public final class ResponseBuilder {
-	private int status = 200;
+	private int status;
 	private Map<String, String> headers = null;
 	private Writable writable = null;
+
+	public ResponseBuilder() {
+		this(Status.OK);
+	}
+
+	public ResponseBuilder(int status) {
+		this.status = status;
+	}
 
 	/**
 	 * Sets the status code of the response.

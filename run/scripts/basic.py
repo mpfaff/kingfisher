@@ -2,16 +2,16 @@ import time
 
 state = getState(lambda: JObject({'counter': 0}))
 
-addRoute(GET, "/hello_with_py", lambda req, args: respond().status(200).content("Hello, World!").html().finish())
+addRoute(GET, "/hello_with_py", lambda req, args: respond().content("Hello, World!").html().finish())
 
 def handle_hello_name(req, args):
-    return respond().status(200).content(render("hello_name.html", args)).html().finish()
+    return respond().content(render("hello_name.html", args)).html().finish()
 
 addRoute(GET, "/hello_with_py/(?<name>.+)", handle_hello_name)
 
 def handle_sleep(req, args):
     time.sleep(4)
-    return respond().status(200).content("I have slept!").html().finish()
+    return respond().content("I have slept!").html().finish()
 
 addRoute(GET, "/sleep", handle_sleep)
 

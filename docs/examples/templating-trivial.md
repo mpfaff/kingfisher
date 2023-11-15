@@ -10,7 +10,7 @@ In **Javascript**:
 
 ```js
 addRoute(GET, "/hello/(?<name>.+)", (req, args) => {
-    return respond().status(200).content(render("hello_name.html", args)).html().finish()
+    return respond().content(render("hello_name.html", args)).html().finish()
 })
 ```
 
@@ -18,7 +18,7 @@ In **Python**:
 
 ```py
 def handle_hello_name(req, args):
-    return respond().status(200).content(render("hello_name.html", args)).html().finish()
+    return respond().content(render("hello_name.html", args)).html().finish()
 
 addRoute(GET, "/hello/(?<name>.+)", handle_hello_name)
 ```
