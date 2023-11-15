@@ -12,10 +12,10 @@ import java.nio.file.Path;
 /**
  * Implements the `node:fs/promises` API.
  */
-public final class JSNodeFS {
+public final class JSApiNodeFS {
 	private final EventLoop eventLoop;
 
-	public JSNodeFS(EventLoop eventLoop) {
+	public JSApiNodeFS(EventLoop eventLoop) {
 		this.eventLoop = eventLoop;
 	}
 

@@ -11,11 +11,11 @@ import java.net.http.HttpResponse;
 
 public final class JSApi {
 	private final EventLoop eventLoop;
-	public final JSNodeFS fs;
+	public final JSApiNodeFS fs;
 
 	public JSApi(EventLoop eventLoop) {
 		this.eventLoop = eventLoop;
-		this.fs = new JSNodeFS(eventLoop);
+		this.fs = new JSApiNodeFS(eventLoop);
 	}
 
 	public JPromise<JSFetchResponse> fetch(String url, Value options) {

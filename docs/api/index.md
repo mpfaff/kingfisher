@@ -14,3 +14,19 @@ Scripts must register themselves to handle various events. See [the Javadoc]({{ 
 ## Request handling
 
 See [the Javadoc]({{ '/api/javadoc/kingfisher/requests/RequestScriptThread.Api.html' | relative_url }}).
+
+## Language-specific APIs
+
+The supported languages each have their own set of available APIs.
+
+### [JavaScript]({{ '/api/javadoc/kingfisher/interop/js/JSApi.html' | relative_url }})
+
+JavaScript has a limited selection of the standard library available.
+
+The language specific APIs implemented closely resemble missing standard library and NodeJS APIs.
+
+### Python
+
+Python has most if not all of the standard library available to use.
+
+No additional language-specific APIs are available.
