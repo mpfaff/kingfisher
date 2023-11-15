@@ -64,7 +64,7 @@ public final class ScriptLoader {
 			} catch (InterruptedException e) {
 				SCRIPT_LOGGER.log(() -> "Hot reload service interrupted", e, List.of(ERROR));
 			}
-		}).start();
+		}, "Script Loader").start();
 	}
 
 	private void hotReload() {

@@ -2,13 +2,13 @@ package kingfisher.interop.js;
 
 import dev.pfaff.log4truth.Logger;
 import kingfisher.scripting.ScriptThread;
+import kingfisher.util.Errors;
 import org.graalvm.polyglot.Value;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
+import java.util.List;
+import java.util.concurrent.*;
 
+import static dev.pfaff.log4truth.StandardTags.DEBUG;
 import static kingfisher.util.ThrowUnchecked.throwUnchecked;
 
 /**
@@ -41,25 +41,27 @@ public final class JPromise<T> {
 	}
 
 	public JPromise<?> then(Value onResolve, Value onReject) {
-		Logger.log(() -> "registering then callbacks on JPromise: " + onResolve + ", " + onReject);
+		Logger.log(() -> "registering then callbacks on JPromise: " + onResolve + ", " + onReject, List.of(DEBUG));
 		var fut = new CompletableFuture<Value>();
 		future.whenComplete((ok, err) -> {
-			Logger.log(() -> "JPromise completed");
+			err = Errors.unwrapError(err);
+			Logger.log(() -> "completed", List.of(DEBUG));
+			var err_ = err;
 			thread.submitMicrotask(() -> {
 				try {
 					Value value;
-					if (err == null) {
+					if (err_ == null) {
 						value = onResolve.execute(ok);
 					} else if (onReject != null) {
-						value = onReject.execute(err);
+						value = onReject.execute(err_);
 					} else {
-						throw throwUnchecked(err);
+						throw throwUnchecked(err_);
 					}
 					fut.complete(value);
 				} catch (Throwable e) {
 					fut.completeExceptionally(e);
 				}
-				Logger.log(() -> "JPromise.then callbacks completed: " + fut);
+				Logger.log(() -> ".then callbacks completed: " + fut, List.of(DEBUG));
 			});
 		});
 		return new JPromise<>(fut, thread);

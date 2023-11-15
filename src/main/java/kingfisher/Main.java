@@ -5,16 +5,13 @@ import dev.pfaff.log4truth.NamedLogger;
 import kingfisher.constants.Status;
 import kingfisher.requests.CallSiteHandler;
 import kingfisher.responses.BuiltResponse;
-import kingfisher.responses.Writer;
-import kingfisher.scripting.Script;
 import kingfisher.scripting.ScriptLoader;
+import kingfisher.util.Errors;
 import org.eclipse.jetty.http.HttpException;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.util.Callback;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 import static dev.pfaff.log4truth.StandardTags.DEBUG;
 import static dev.pfaff.log4truth.StandardTags.ERROR;
@@ -28,6 +25,9 @@ public final class Main {
 	public static void main(String[] args) {
 		LogSink.addFilterToGlobal((source, tags, thread) -> {
 			return !source.startsWith("org.eclipse.jetty.") || !tags.contains(DEBUG);
+		});
+		LogSink.addFilterToGlobal((source, tags, thread) -> {
+			return !source.startsWith("io.pebbletemplates.pebble.") || !tags.contains("TRACE");
 		});
 
 		ScriptEngine engine = new ScriptEngine();
@@ -47,13 +47,13 @@ public final class Main {
 					try {
 						return handler.handle(request, response, callback);
 					} catch (Throwable e) {
-						return handleError(response, callback, e);
+						return handleError(engine, response, callback, e);
 					}
 				}
 			});
 			server.setErrorHandler((request, response, callback) -> {
 				Throwable cause = (Throwable) request.getAttribute(ERROR_EXCEPTION);
-				return handleError(response, callback, cause);
+				return handleError(engine, response, callback, cause);
 			});
 			server.start();
 			server.join();
@@ -62,9 +62,10 @@ public final class Main {
 		}
 	}
 
-	public static boolean handleError(Response response, Callback callback, Throwable cause) {
+	public static boolean handleError(ScriptEngine engine, Response response, Callback callback, Throwable cause) {
 		String message;
 		var status = Status.INTERNAL_SERVER_ERROR;
+		cause = Errors.unwrapError(cause);
 		if (cause instanceof HttpException httpException) {
 			status = httpException.getCode();
 			message = httpException.getReason() != null ? httpException.getReason() : Integer.toString(status);
@@ -72,10 +73,7 @@ public final class Main {
 			message = "Internal server error";
 		}
 		WEB_LOGGER.log(() -> "Caught exception while handling request: " + message, cause, List.of(ERROR));
-		new BuiltResponse(status,
-				Map.of(),
-				Writer.stringWriter("<p style=\"font-size: 4em\">" + message + "<p>"))
-				.send(response, callback);
+		BuiltResponse.error(engine, status, message).send(response, callback);
 		return true;
 	}
 }

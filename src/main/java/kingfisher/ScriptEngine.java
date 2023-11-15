@@ -33,8 +33,15 @@ import static kingfisher.Config.TRACE_SCRIPT_ENGINE;
 import static kingfisher.util.Timing.formatTime;
 
 public final class ScriptEngine {
+	private static final Map<String, Object> CONSTANT_BINDINGS = Map.of(
+			"ContentType", new ProxyConstantTable(ContentType.class),
+			"Header", new ProxyConstantTable(Header.class),
+			"Method", new ProxyConstantTable(Method.class)
+	);
+
 	private final Engine engine = Engine.newBuilder("js", "python", "llvm", "wasm")
 			.logHandler(new PolyglotLogHandler())
+			.option("js.unhandled-rejections", "throw")
 			.build();
 	public final Map<String, Context.Builder> langContextBuilders = engine.getLanguages()
 			.keySet()
@@ -42,11 +49,21 @@ public final class ScriptEngine {
 			.collect(Collectors.toMap(Function.identity(), this::makeBuilder));
 	public final Context.Builder allLangContextBuilder =
 			makeBuilder(engine.getLanguages().keySet().toArray(String[]::new));
-	public final ExecutorService ioExecutor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("I/O", 0).factory());
-	public final ExecutorService httpClientExecutor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("HttpClient", 0).factory());
+
+	// executors
+	public final ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofPlatform()
+			.name("Script Executor #", 0)
+			.factory());
+	public final ExecutorService ioExecutor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual()
+			.name("I/O #", 0)
+			.factory());
+	public final ExecutorService httpClientExecutor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual()
+			.name("Http Client #", 0)
+			.factory());
 	public final HttpClient httpClient = HttpClient.newBuilder()
 			.executor(httpClientExecutor)
 			.build();
+
 
 	private Context.Builder makeBuilder(String... languages) {
 		return Context.newBuilder(languages)
@@ -60,15 +77,6 @@ public final class ScriptEngine {
 						.build())
 				.engine(engine);
 	}
-
-	private static final Map<String, Object> CONSTANT_BINDINGS = Map.of(
-			"ContentType", new ProxyConstantTable(ContentType.class),
-			"Header", new ProxyConstantTable(Header.class),
-			"Method", new ProxyConstantTable(Method.class)
-	);
-
-	public final ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofPlatform()
-			.name("Script Executor #", 0).factory());
 
 	public final PebbleEngine pebble = new PebbleEngine.Builder()
 			.cacheActive(true)
@@ -84,8 +92,11 @@ public final class ScriptEngine {
 		var start = System.nanoTime();
 
 		// these don't support getBindings().putMember()
-		if ("llvm".equals(lang)) return;
-		if ("wasm".equals(lang)) return;
+		switch (lang) {
+			case "llvm", "wasm" -> {
+				return;
+			}
+		}
 
 		// Profiling shows that this takes a long time because the language is lazily initialized and this is where it
 		// happens. Specifically, it appears that libpython/importlib/_bootstrap.py#__import__ takes the vast majority
@@ -93,9 +104,11 @@ public final class ScriptEngine {
 		// combined with the size of the python standard library being imported.
 		var bindings = ctx.getBindings(lang);
 
-		if ("js".equals(lang)) {
-			for (Source function : JSImplementations.functions) {
-				bindings.putMember(function.getName(), ctx.eval(function));
+		switch (lang) {
+			case "js" -> {
+				for (Source function : JSImplementations.functions) {
+					bindings.putMember(function.getName(), ctx.eval(function));
+				}
 			}
 		}
 
@@ -159,7 +172,11 @@ public final class ScriptEngine {
 		var ctx = langContextBuilders.get(lang).build();
 
 		try {
-			setupBindings(ctx, lang, ctx.asValue(api), Map.of("fs", ctx.asValue(new JSNodeFS(api.thread))));
+			Map<String, Value> modules = switch (lang) {
+				case "js" -> Map.of("fs", ctx.asValue(new JSNodeFS(api.thread)));
+				default -> Map.of();
+			};
+			setupBindings(ctx, lang, ctx.asValue(api), modules);
 
 			return ctx;
 		} catch (Throwable e) {

@@ -29,6 +29,13 @@ addRoute(GET, "/fetch_html_test", async req => {
         .finish();
 });
 
+addRoute(GET, "/fetch_html_test_error", async req => {
+    return respond()
+        .status(200)
+        .content(await (await fetch("https://examplqwnjdnjqwe.com/")).text())
+        .finish();
+});
+
 addRoute(GET, "/fetch_post_text_body", async req => {
     return respond()
         .status(200)
@@ -37,7 +44,7 @@ addRoute(GET, "/fetch_post_text_body", async req => {
 });
 
 addRoute(GET, "/fetch_post_binary_body", async req => {
-    const buf = new Uint8Array([0xDE, 0xAD, 0xBE, 0xEF]);
+    const buf = new Uint32Array([0xDEADBEEF]);
     return respond()
         .status(200)
         .content(await (await fetch("https://httpbin.org/post", {method: POST, body: buf.buffer})).text())
@@ -90,29 +97,6 @@ addRoute(POST, "/todos", async req => {
     }
 });
 
-// addRoute(GET, "/fetch_test", req => {
-//     print("got request");
-//     return new Promise((resolve, reject) => {
-//         fetch("https://baconipsum.com/api/?type=meat-and-filler").then(resp => {
-//             print("got response");
-//             resp.text().then(text => {
-//                 print("got text");
-//                 resolve(respond().status(200).content(text).finish());
-//             }, reject);
-//         }, reject);
-//     });
-// });
-
-// addRoute(GET, "/fetch_test", req => {
-//     const tasks = Array.from(new Array(10), i => fetch("https://baconipsum.com/api/?type=meat-and-filler"))
-//         .map(task => task.thenAsync(res => res.text()));
-//     const texts = Array.from(collectTasks(tasks).join());
-//     return respond().status(200).content(texts.join("\n\n---\n\n")).finish();
-// });
-//
-// addRoute(GET, "/fetch_html_test", req => {
-//     return respond()
-//         .status(200)
-//         .content(fetch("https://example.com/").thenAsync(res => res.text()).join())
-//         .finish();
-// });
+addRoute(GET, "/error", async req => {
+    throw new Error();
+});
