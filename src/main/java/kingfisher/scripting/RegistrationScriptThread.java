@@ -3,7 +3,7 @@ package kingfisher.scripting;
 import kingfisher.ScriptEngine;
 import kingfisher.interop.Exports;
 import kingfisher.interop.JObject;
-import kingfisher.requests.ProxyRequest;
+import kingfisher.requests.HttpServerRequest;
 import kingfisher.requests.RegexRouteHandler;
 import kingfisher.requests.RequestScriptThread;
 import kingfisher.requests.ScriptRequestHandler;
@@ -60,8 +60,8 @@ public final class RegistrationScriptThread extends ScriptThread {
 				SCRIPT_LOGGER.log(() -> "Submitting task to process script handler on a worker thread");
 				engine.executor.submit(() -> {
 					SCRIPT_LOGGER.log(() -> "Processing script handler");
-					var api = new RequestScriptThread(engine, script, handlerId);
-					try (var ctx = engine.createExecutionScriptContext(api)) {
+					var thread = new RequestScriptThread(engine, script, handlerId);
+					try (var ctx = engine.createExecutionScriptContext(thread)) {
 						ctx.enter();
 						try {
 							engine.loadScript(ctx, script);
@@ -70,7 +70,7 @@ public final class RegistrationScriptThread extends ScriptThread {
 							long elapsed;
 
 							//noinspection unchecked,rawtypes
-							var res = api.handler.handle(new ProxyRequest(request), JObject.wrap((Map<String, Object>) (Map) arguments));
+							var res = thread.handler.handle(new HttpServerRequest(thread, request), JObject.wrap((Map<String, Object>) (Map) arguments));
 
 							if (res == null) {
 								throw new NullPointerException("Script returned null response object");

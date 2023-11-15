@@ -25,7 +25,7 @@ public final class WrappedScriptRequestHandler {
 		this.handler = handler;
 	}
 
-	public BuiltResponse handle(ProxyRequest request, JObject arguments) throws Exception {
+	public BuiltResponse handle(HttpServerRequest request, JObject arguments) throws Exception {
 		try {
 			try {
 				var result = handler.handle(request, arguments);
