@@ -9,8 +9,8 @@ The full Javadoc is available [here]({{ 'javadoc' | relative_url }}), but most o
 
 ## Registration
 
-Scripts must register themselves to handle various events. See [the Javadoc]({{ 'javadoc/kingfisher/scripting/ScriptThread.RegistrationApi.html' | relative_url }}) for a listing of these.
+Scripts must register themselves to handle various events. See [the Javadoc]({{ '/api/javadoc/kingfisher/scripting/ScriptThread.RegistrationApi.html' | relative_url }}) for a listing of these.
 
 ## Request handling
 
-See [the Javadoc]({{ 'javadoc/kingfisher/requests/RequestScriptThread.Api.html' | relative_url }}).
+See [the Javadoc]({{ '/api/javadoc/kingfisher/requests/RequestScriptThread.Api.html' | relative_url }}).
