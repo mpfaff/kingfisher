@@ -25,14 +25,14 @@ addRoute(GET, "/fetch_test", async req => {
 addRoute(GET, "/fetch_html_test", async req => {
     return respond()
         .status(200)
-        .content(await (await fetch("https://example.com/")).text())
+        .content(await (await fetch("https://mpfaff.github.io/kingfisher/")).text())
         .finish();
 });
 
 addRoute(GET, "/fetch_html_test_error", async req => {
     return respond()
         .status(200)
-        .content(await (await fetch("https://examplqwnjdnjqwe.com/")).text())
+        .content(await (await fetch("https://hopethisfailstoresolve.com/")).text())
         .finish();
 });
 
