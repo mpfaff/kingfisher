@@ -21,6 +21,7 @@ public final class RequestScriptThread extends ScriptThread {
 	@Override
 	public void exportApi(String lang, Value scope) {
 		super.exportApi(lang, scope);
+		Exports.objectMembers(new RegistrationApi()).export(scope);
 		Exports.objectMembers(new Api()).export(scope);
 	}
 
@@ -30,10 +31,10 @@ public final class RequestScriptThread extends ScriptThread {
 	}
 
 	/**
-	 * The API available to each script when it is executed to handle a request.
+	 * Refer to {@link ScriptThread.RegistrationApi}.
 	 */
-	public final class Api extends BaseApi {
-		private Api() {}
+	public final class RegistrationApi extends ScriptThread.RegistrationApi {
+		private RegistrationApi() {}
 
 		@Override
 		public void addRoute(String method, String path, ScriptRouteHandler handler) {
@@ -41,7 +42,12 @@ public final class RequestScriptThread extends ScriptThread {
 				RequestScriptThread.this.handler = new WrappedScriptRequestHandler(RequestScriptThread.this.eventLoop, handler);
 			}
 		}
+	}
 
+	/**
+	 * The API available to each script when it is executed to handle a request.
+	 */
+	public final class Api {
 		/**
 		 * Returns a new {@link ResponseBuilder} with the default status code of {@value kingfisher.constants.Status#OK}.
 		 */

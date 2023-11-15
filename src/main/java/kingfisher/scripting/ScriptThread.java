@@ -101,8 +101,6 @@ public abstract class ScriptThread {
 
 	/**
 	 * Core API available to scripts regardless of context.
-	 *
-	 * @see BaseApi
 	 */
 	public final class Api {
 		private static final ProxyConstantTable CONTENT_TYPE = new ProxyConstantTable(ContentType.class);
@@ -166,12 +164,13 @@ public abstract class ScriptThread {
 	}
 
 	/**
-	 * Core API available to the script whose implementation is context-sensitive.
-	 *
-	 * @see Api
+	 * All methods for scripts to register to handle events. The implementation of this API is context-sensitive.
+	 * Specifically, registration only works during the registration phase. In other phases, the script <em>may</em>
+	 * be re-evaluated, but registration functions will be used for selecting the handler to use, not actually
+	 * registering a handler.
 	 */
-	public abstract class BaseApi {
-		protected BaseApi() {
+	public abstract class RegistrationApi {
+		protected RegistrationApi() {
 		}
 
 		/**

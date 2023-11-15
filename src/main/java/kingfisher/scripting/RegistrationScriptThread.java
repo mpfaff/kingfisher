@@ -31,7 +31,7 @@ public final class RegistrationScriptThread extends ScriptThread {
 	@Override
 	public void exportApi(String lang, Value scope) {
 		super.exportApi(lang, scope);
-		Exports.objectMembers(new Api()).export(scope);
+		Exports.objectMembers(new RegistrationApi()).export(scope);
 	}
 
 	@Override
@@ -45,10 +45,10 @@ public final class RegistrationScriptThread extends ScriptThread {
 	}
 
 	/**
-	 * The API available to each script during the registration phase.
+	 * Refer to {@link ScriptThread.RegistrationApi}.
 	 */
-	public final class Api extends BaseApi {
-		private Api() {}
+	public final class RegistrationApi extends ScriptThread.RegistrationApi {
+		private RegistrationApi() {}
 
 		@Override
 		public void addRoute(String method, String path, ScriptRouteHandler handler) {
