@@ -29,7 +29,7 @@ public final class RequestScriptThread extends ScriptThread {
 		return script;
 	}
 
-	public final class Api extends ScriptThread.Api {
+	public final class Api extends BaseApi {
 		private Api() {}
 
 		@Override

@@ -56,7 +56,7 @@ public abstract class ScriptThread {
 		// Thread-safe map type.
 		scope.putMember("ConcurrentMap", (ProxyInstantiable) arguments -> ApiConstants.mapFromObject(arguments[0], ConcurrentHashMap::new));
 
-		Exports.objectMembers(new OurApi()).export(scope);
+		Exports.objectMembers(new Api()).export(scope);
 		switch (lang) {
 			case "js" -> Exports.objectMembers(new JSApi(eventLoop)).export(scope);
 			default -> {}
@@ -95,12 +95,12 @@ public abstract class ScriptThread {
 		}
 	}
 
-	public final class OurApi {
+	public final class Api {
 		private static final ProxyConstantTable CONTENT_TYPE = new ProxyConstantTable(ContentType.class);
 		private static final ProxyConstantTable HEADER = new ProxyConstantTable(Header.class);
 		private static final ProxyConstantTable METHOD = new ProxyConstantTable(Method.class);
 
-		private OurApi() {}
+		private Api() {}
 
 		public final ProxyConstantTable ContentType = CONTENT_TYPE;
 		public final ProxyConstantTable Header = HEADER;
@@ -148,8 +148,8 @@ public abstract class ScriptThread {
 	/**
 	 * The API available to the script.
 	 */
-	public abstract class Api {
-		protected Api() {}
+	public abstract class BaseApi {
+		protected BaseApi() {}
 
 		/**
 		 * Registers a handler for the specified route.

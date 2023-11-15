@@ -6,7 +6,7 @@
  * Scripts must register themselves to handle various events.
  *
  * <ul>
- *     <li>{@link kingfisher.scripting.ScriptThread.Api#addRoute(String, String, ScriptRouteHandler)}</li>
+ *     <li>{@link kingfisher.scripting.ScriptThread.BaseApi#addRoute(String, String, ScriptRouteHandler)}</li>
  * </ul>
  *
  * <h2>Request handling</h2>

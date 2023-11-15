@@ -44,7 +44,7 @@ public final class RegistrationScriptThread extends ScriptThread {
 		this.script = script;
 	}
 
-	public final class Api extends ScriptThread.Api {
+	public final class Api extends BaseApi {
 		private Api() {}
 
 		@Override
