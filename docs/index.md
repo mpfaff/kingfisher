@@ -43,4 +43,4 @@ See the examples below for... examples!
 
 #### [Templating (trivial)]({% link examples/templating-trivial.md %})
 
-### [API]({{ '/api' | relative_url }})
+### [API]({{ '/api/kingfisher/package-summary.html' | relative_url }})
