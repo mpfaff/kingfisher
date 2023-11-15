@@ -43,4 +43,4 @@ See the examples below for... examples!
 
 #### [Templating (trivial)]({% link examples/templating-trivial.md %})
 
-### [API]({% link api/index.html %})
+### [API]({% /api | relative_url %})
