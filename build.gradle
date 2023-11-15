@@ -41,4 +41,6 @@ tasks.withType(JavaCompile).configureEach {
 java {
     toolchain.languageVersion = JavaLanguageVersion.of("21")
     archivesBaseName = project.properties.name
+    withSourcesJar()
+    withJavadocJar()
 }

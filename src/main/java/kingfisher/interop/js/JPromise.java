@@ -1,7 +1,7 @@
 package kingfisher.interop.js;
 
 import dev.pfaff.log4truth.Logger;
-import kingfisher.scripting.ScriptThread;
+import kingfisher.scripting.EventLoop;
 import kingfisher.util.Errors;
 import org.graalvm.polyglot.Value;
 
@@ -17,14 +17,14 @@ import static kingfisher.util.ThrowUnchecked.throwUnchecked;
  */
 public final class JPromise<T> {
 	private final CompletionStage<T> future;
-	private final ScriptThread thread;
+	private final EventLoop eventLoop;
 
-	public JPromise(CompletionStage<T> future, ScriptThread thread) {
+	public JPromise(CompletionStage<T> future, EventLoop eventLoop) {
 		this.future = future;
-		this.thread = thread;
+		this.eventLoop = eventLoop;
 	}
 
-	public static <T> JPromise<T> submitToExecutor(Callable<T> callable, ExecutorService executor, ScriptThread thread) {
+	public static <T> JPromise<T> submitToExecutor(Callable<T> callable, ExecutorService executor, EventLoop eventLoop) {
 		var fut = new CompletableFuture<T>();
 		executor.submit(() -> {
 			try {
@@ -33,7 +33,7 @@ public final class JPromise<T> {
 				fut.completeExceptionally(e);
 			}
 		});
-		return new JPromise<>(fut, thread);
+		return new JPromise<>(fut, eventLoop);
 	}
 
 	public JPromise<?> then(Value onResolve) {
@@ -41,13 +41,16 @@ public final class JPromise<T> {
 	}
 
 	public JPromise<?> then(Value onResolve, Value onReject) {
+		if (onResolve == null || !onResolve.canExecute()) {
+			throw new IllegalArgumentException("Expected an executable value for parameter 'onResolve'");
+		}
 		Logger.log(() -> "registering then callbacks on JPromise: " + onResolve + ", " + onReject, List.of(DEBUG));
 		var fut = new CompletableFuture<Value>();
 		future.whenComplete((ok, err) -> {
 			err = Errors.unwrapError(err);
 			Logger.log(() -> "completed", List.of(DEBUG));
 			var err_ = err;
-			thread.submitMicrotask(() -> {
+			eventLoop.submitMicrotask(() -> {
 				try {
 					Value value;
 					if (err_ == null) {
@@ -64,6 +67,6 @@ public final class JPromise<T> {
 				Logger.log(() -> ".then callbacks completed: " + fut, List.of(DEBUG));
 			});
 		});
-		return new JPromise<>(fut, thread);
+		return new JPromise<>(fut, eventLoop);
 	}
 }

@@ -6,6 +6,6 @@ import org.eclipse.jetty.util.Callback;
 
 import java.util.Map;
 
-public interface RequestHandler {
+public interface RouteHandler {
 	void handle(Request request, Map<String, String> arguments, Response response, Callback callback) throws Exception;
 }

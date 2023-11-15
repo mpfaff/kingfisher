@@ -42,3 +42,5 @@ See the examples below for... examples!
 #### [Counter]({% link examples/counter.md %})
 
 #### [Templating (trivial)]({% link examples/templating-trivial.md %})
+
+### [API]({% link api/index.html %})

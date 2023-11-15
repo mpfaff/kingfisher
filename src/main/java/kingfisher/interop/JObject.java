@@ -24,8 +24,12 @@ public final class JObject implements ProxyObject {
 		}
 	}
 
-	public JObject(Map<String, Object> map) {
+	private JObject(Map<String, Object> map) {
 		this.map = map;
+	}
+
+	public static JObject wrap(Map<String, Object> map) {
+		return new JObject(map);
 	}
 
 	@Override

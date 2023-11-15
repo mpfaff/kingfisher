@@ -8,7 +8,11 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public record RegexRouteHandler(String method, Pattern pattern, RequestHandler handler) implements MatchingRequestHandler {
+/**
+ * A request handler that matches a route using the {@link #method} and url {@link #pattern}, extracts the arguments
+ * from the match groups, and invokes the route {@link #handler}.
+ */
+public record RegexRouteHandler(String method, Pattern pattern, RouteHandler handler) implements RequestHandler {
 	@Override
 	public boolean handle(Request request, Response response, Callback callback) throws Exception {
 		if (!request.getMethod().equals(method)) return false;

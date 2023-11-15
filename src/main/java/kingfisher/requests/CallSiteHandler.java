@@ -60,7 +60,7 @@ public final class CallSiteHandler extends Handler.Abstract {
 			MH_handleFallback = MethodHandles.lookup().findStatic(CallSiteHandler.class,
 					"handleFallback",
 					CallSiteHandler.HANDLER_TYPE);
-			MH_handle = MethodHandles.lookup().findVirtual(MatchingRequestHandler.class,
+			MH_handle = MethodHandles.lookup().findVirtual(RequestHandler.class,
 					"handle",
 					CallSiteHandler.HANDLER_TYPE);
 		} catch (NoSuchMethodException | IllegalAccessException e) {
@@ -92,7 +92,7 @@ public final class CallSiteHandler extends Handler.Abstract {
 	 *
 	 * @param handlers the handlers to chain
 	 */
-	public static MethodHandle chainHandlers(List<MatchingRequestHandler> handlers) {
+	public static MethodHandle chainHandlers(List<RequestHandler> handlers) {
 		Main.WEB_LOGGER.log(() -> "handlers: " + handlers, List.of(DEBUG));
 		var a = new ArrayList<MethodHandle>(handlers.size() + 1);
 		a.add(MH_handleLogging);

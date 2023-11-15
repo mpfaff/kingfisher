@@ -1,6 +1,6 @@
 package kingfisher.interop.js;
 
-import kingfisher.scripting.ScriptThread;
+import kingfisher.scripting.EventLoop;
 import org.graalvm.polyglot.Value;
 
 import java.nio.charset.Charset;
@@ -8,29 +8,28 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.FileAttribute;
 
 /**
  * Implements the `node:fs/promises` API.
  */
 public final class JSNodeFS {
-	private final ScriptThread thread;
+	private final EventLoop eventLoop;
 
-	public JSNodeFS(ScriptThread thread) {
-		this.thread = thread;
+	public JSNodeFS(EventLoop eventLoop) {
+		this.eventLoop = eventLoop;
 	}
 
 	public JPromise<byte[]> readFile(String path) {
 		return JPromise.submitToExecutor(() -> {
 			return Files.readAllBytes(Path.of(path));
-		}, thread.engine.ioExecutor, thread);
+		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
 	public JPromise<String> readFileAsString(String path, String encoding) {
 		var charset = encodingToCharset(encoding);
 		return JPromise.submitToExecutor(() -> {
 			return Files.readString(Path.of(path), charset);
-		}, thread.engine.ioExecutor, thread);
+		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
 	public JPromise<String> readFile(String path, Value options) {
@@ -45,7 +44,7 @@ public final class JSNodeFS {
 		return JPromise.submitToExecutor(() -> {
 			Files.write(Path.of(path), data);
 			return null;
-		}, thread.engine.ioExecutor, thread);
+		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
 	public JPromise<Void> writeFile(String path, String data) {
@@ -57,7 +56,7 @@ public final class JSNodeFS {
 		return JPromise.submitToExecutor(() -> {
 			Files.writeString(Path.of(path), data, charset);
 			return null;
-		}, thread.engine.ioExecutor, thread);
+		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
 	public JPromise<Void> writeFile(String path, Object data, Value options) {
@@ -88,7 +87,7 @@ public final class JSNodeFS {
 					return false;
 				}
 			}
-		}, thread.engine.ioExecutor, thread);
+		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
 	private static Charset encodingToCharset(String encoding) {

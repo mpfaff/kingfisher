@@ -1,7 +1,5 @@
 package kingfisher.scripting;
 
-import kingfisher.InitScriptApi;
-import kingfisher.InitStagingArea;
 import kingfisher.ScriptEngine;
 import kingfisher.requests.CallSiteHandler;
 import org.graalvm.polyglot.Source;
@@ -11,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.Watchable;
 import java.util.List;
-import java.util.Scanner;
 
 import static dev.pfaff.log4truth.StandardTags.ERROR;
 import static dev.pfaff.log4truth.StandardTags.WARN;
@@ -79,16 +76,16 @@ public final class ScriptLoader {
 	}
 
 	private void activateScripts() throws Exception {
-		var staging = new InitStagingArea();
-		var api = new InitScriptApi(engine, staging);
-		try (var ctx = engine.createScriptContext(api)) {
+		var staging = new Registrar();
+		var api = new RegistrationScriptThread(engine, staging);
+		try (var ctx = engine.createRegistrationScriptContext(api)) {
 			for (var script : ScriptLoader.loadScripts()) {
 				api.setScript(script);
 				engine.loadScript(ctx, script);
 			}
 		}
 		staging.complete();
-		engine.handler.setTarget(CallSiteHandler.chainHandlers(staging.handlers));
+		engine.handler.setTarget(CallSiteHandler.chainHandlers(staging.requestHandlers));
 	}
 
 	private static List<Script> loadScripts() throws IOException {

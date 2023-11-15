@@ -1,22 +1,21 @@
 package kingfisher.interop.js;
 
 import dev.pfaff.log4truth.Logger;
-import kingfisher.scripting.ScriptThread;
+import kingfisher.scripting.EventLoop;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 public final class JSFetchResponse {
 	private final HttpResponse<byte[]> response;
-	private final ScriptThread thread;
+	private final EventLoop thread;
 
-	public JSFetchResponse(HttpResponse<byte[]> response, ScriptThread thread) {
+	public JSFetchResponse(HttpResponse<byte[]> response, EventLoop eventLoop) {
 		this.response = response;
-		this.thread = thread;
+		this.thread = eventLoop;
 	}
 
 	public Value getHeaders() {

@@ -2,18 +2,17 @@ package kingfisher;
 
 import dev.pfaff.log4truth.NamedLogger;
 import io.pebbletemplates.pebble.PebbleEngine;
-import kingfisher.constants.ContentType;
-import kingfisher.constants.Header;
-import kingfisher.constants.Method;
-import kingfisher.interop.ProxyConstantTable;
 import kingfisher.interop.js.JSImplementations;
-import kingfisher.interop.js.JSNodeFS;
 import kingfisher.requests.CallSiteHandler;
 import kingfisher.requests.ScriptRequestHandler;
 import kingfisher.scripting.Script;
+import kingfisher.scripting.ScriptThread;
 import kingfisher.templating.FileLoader;
 import kingfisher.templating.OurExtension;
-import org.graalvm.polyglot.*;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Source;
 
 import java.lang.invoke.MutableCallSite;
 import java.net.http.HttpClient;
@@ -29,16 +28,9 @@ import java.util.stream.Collectors;
 
 import static dev.pfaff.log4truth.StandardTags.*;
 import static kingfisher.Config.TEMPLATES_DIR;
-import static kingfisher.Config.TRACE_SCRIPT_ENGINE;
 import static kingfisher.util.Timing.formatTime;
 
 public final class ScriptEngine {
-	private static final Map<String, Object> CONSTANT_BINDINGS = Map.of(
-			"ContentType", new ProxyConstantTable(ContentType.class),
-			"Header", new ProxyConstantTable(Header.class),
-			"Method", new ProxyConstantTable(Method.class)
-	);
-
 	private final Engine engine = Engine.newBuilder("js", "python", "llvm", "wasm")
 			.logHandler(new PolyglotLogHandler())
 			.option("js.unhandled-rejections", "throw")
@@ -88,7 +80,7 @@ public final class ScriptEngine {
 			.build();
 	public final MutableCallSite handler = new MutableCallSite(CallSiteHandler.chainHandlers(List.of()));
 
-	private void setupBindings(Context ctx, String lang, Value scriptApi, Map<String, Value> modules) {
+	private void setupBindings(ScriptThread thread, Context ctx, String lang) {
 		var start = System.nanoTime();
 
 		// these don't support getBindings().putMember()
@@ -104,6 +96,7 @@ public final class ScriptEngine {
 		// combined with the size of the python standard library being imported.
 		var bindings = ctx.getBindings(lang);
 
+		// TODO: refactor and remove this
 		switch (lang) {
 			case "js" -> {
 				for (Source function : JSImplementations.functions) {
@@ -112,35 +105,22 @@ public final class ScriptEngine {
 			}
 		}
 
-		if (TRACE_SCRIPT_ENGINE) {
+		{
 			long now = System.nanoTime();
 			long elapsed = now - start;
-			Main.SCRIPT_LOGGER.log(() -> "Got bindings object for '" + lang + "' in " + formatTime(elapsed));
+			Main.SCRIPT_LOGGER.log(() -> "Got bindings object for '" + lang + "' in " + formatTime(elapsed), List.of("TIMING"));
 			start = now;
 		}
 
 		if (!bindings.hasMembers()) return;
 
 		try {
-			for (var member : scriptApi.getMemberKeys()) {
-				bindings.putMember(member, scriptApi.getMember(member));
-			}
+			thread.exportApi(lang, bindings);
 
-			for (var module : modules.entrySet()) {
-				bindings.putMember(module.getKey(), module.getValue());
-			}
-
-			// these are commonly used enough to warrant them being unscoped...
-			for (var method : List.of(Method.GET, Method.POST, Method.PUT, Method.POST, Method.DELETE, Method.HEAD)) {
-				bindings.putMember(method, method);
-			}
-
-			CONSTANT_BINDINGS.forEach(bindings::putMember);
-
-			if (TRACE_SCRIPT_ENGINE) {
+			{
 				long now = System.nanoTime();
 				long elapsed = now - start;
-				Main.SCRIPT_LOGGER.log(() -> "Setup bindings for '" + lang + "' in " + formatTime(elapsed));
+				Main.SCRIPT_LOGGER.log(() -> "Setup bindings for '" + lang + "' in " + formatTime(elapsed), List.of("TIMING"));
 				start = now;
 			}
 		} catch (Throwable e) {
@@ -149,14 +129,12 @@ public final class ScriptEngine {
 		}
 	}
 
-	public Context createScriptContext(InitScriptApi api) {
+	public Context createRegistrationScriptContext(ScriptThread thread) {
 		var ctx = allLangContextBuilder.build();
 
 		try {
-			var scriptApi = ctx.asValue(api);
-
 			for (var lang : engine.getLanguages().keySet()) {
-				setupBindings(ctx, lang, scriptApi, Map.of());
+				setupBindings(thread, ctx, lang);
 			}
 
 			return ctx;
@@ -166,17 +144,13 @@ public final class ScriptEngine {
 		}
 	}
 
-	public Context createScriptContext(HandlerInvocationScriptApi api) {
-		var lang = api.script().source().getLanguage();
+	public Context createExecutionScriptContext(ScriptThread thread) {
+		var lang = thread.script().source().getLanguage();
 
 		var ctx = langContextBuilders.get(lang).build();
 
 		try {
-			Map<String, Value> modules = switch (lang) {
-				case "js" -> Map.of("fs", ctx.asValue(new JSNodeFS(api.thread)));
-				default -> Map.of();
-			};
-			setupBindings(ctx, lang, ctx.asValue(api), modules);
+			setupBindings(thread, ctx, lang);
 
 			return ctx;
 		} catch (Throwable e) {

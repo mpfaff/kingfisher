@@ -4,13 +4,12 @@ import dev.pfaff.log4truth.Logger;
 import kingfisher.interop.JObject;
 import kingfisher.interop.js.PromiseRejectionException;
 import kingfisher.responses.BuiltResponse;
-import kingfisher.scripting.ScriptThread;
+import kingfisher.scripting.EventLoop;
 import kingfisher.util.Errors;
 import org.graalvm.polyglot.PolyglotException;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 import static dev.pfaff.log4truth.StandardTags.DEBUG;
@@ -18,11 +17,11 @@ import static dev.pfaff.log4truth.StandardTags.ERROR;
 import static kingfisher.Main.SCRIPT_LOGGER;
 
 public final class WrappedScriptRequestHandler {
-	private final ScriptThread thread;
+	private final EventLoop thread;
 	private final ScriptRequestHandler handler;
 
-	public WrappedScriptRequestHandler(ScriptThread thread, ScriptRequestHandler handler) {
-		this.thread = thread;
+	public WrappedScriptRequestHandler(EventLoop eventLoop, ScriptRequestHandler handler) {
+		this.thread = eventLoop;
 		this.handler = handler;
 	}
 
@@ -60,9 +59,7 @@ public final class WrappedScriptRequestHandler {
 				throw Errors.wrapError(Errors.unwrapError(e));
 			}
 		} catch (PolyglotException e) {
-			if (e.isGuestException()) {
-				SCRIPT_LOGGER.log(() -> "Caught synchronous exception from script", e, List.of(ERROR));
-			}
+			SCRIPT_LOGGER.log(() -> "Caught synchronous exception from script", e, List.of(ERROR));
 			return BuiltResponse.error(thread.engine, 500, "Script error");
 		}
 	}

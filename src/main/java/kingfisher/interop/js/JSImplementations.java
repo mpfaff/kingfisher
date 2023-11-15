@@ -29,7 +29,7 @@ public final class JSImplementations {
 
 	public static final String FETCH_BODY_TO_NATIVE_VALUE = "fetchBodyToNativeValue";
 
-	public static final List<Source> functions = Map.of("fetchBodyToNativeValue", """
+	public static final List<Source> functions = Map.of(FETCH_BODY_TO_NATIVE_VALUE, """
 								body => {
 									const BodyPublishers = Java.type("java.net.http.HttpRequest.BodyPublishers");
 									if (typeof body === "string") {
