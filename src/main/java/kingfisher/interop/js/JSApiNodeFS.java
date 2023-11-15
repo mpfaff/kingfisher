@@ -17,6 +17,9 @@ import static kingfisher.interop.ValueUtil.recordConverter;
  * Implements the <a href="https://nodejs.org/docs/latest/api/fs.html#promises-api">{@code node:fs/promises}</a> API.
  */
 public final class JSApiNodeFS {
+	private static final String ENCODING_UTF8 = "utf8";
+	private static final String DEFAULT_ENCODING = ENCODING_UTF8;
+
 	private final EventLoop eventLoop;
 
 	public JSApiNodeFS(EventLoop eventLoop) {
@@ -29,9 +32,13 @@ public final class JSApiNodeFS {
 				v -> v.hasMembers() || v.hasHashEntries(),
 				recordConverter(ReadFileOptions.class));
 		builder.targetTypeMapping(Value.class,
-				WriteFileOptions.class,
+				WriteBinaryFileOptions.class,
 				v -> v.hasMembers() || v.hasHashEntries(),
-				recordConverter(WriteFileOptions.class));
+				recordConverter(WriteBinaryFileOptions.class));
+		builder.targetTypeMapping(Value.class,
+				WriteStringFileOptions.class,
+				v -> v.hasMembers() || v.hasHashEntries(),
+				recordConverter(WriteStringFileOptions.class));
 		builder.targetTypeMapping(Value.class,
 				MkdirOptions.class,
 				v -> v.hasMembers() || v.hasHashEntries(),
@@ -44,27 +51,25 @@ public final class JSApiNodeFS {
 		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
-	public JPromise<String> readFile(String path, String encoding) {
+	public JPromise<?> readFile(String path, String encoding) {
+		if (encoding == null) return readFile(path);
 		var charset = encodingToCharset(encoding);
 		return JPromise.submitToExecutor(() -> {
 			return Files.readString(Path.of(path), charset);
 		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
-	public JPromise<String> readFile(String path, ReadFileOptions options) {
+	public JPromise<?> readFile(String path, ReadFileOptions options) {
 		var encoding = options != null ? options.encoding : null;
 		return readFile(path, encoding);
 	}
 
 	public JPromise<Void> writeFile(String path, byte[] data) {
-		return JPromise.submitToExecutor(() -> {
-			Files.write(Path.of(path), data);
-			return null;
-		}, eventLoop.engine.ioExecutor, eventLoop);
+		return writeFile(path, data, null);
 	}
 
 	public JPromise<Void> writeFile(String path, String data) {
-		return writeFile(path, data, "utf8");
+		return writeFile(path, data, DEFAULT_ENCODING);
 	}
 
 	public JPromise<Void> writeFile(String path, String data, String encoding) {
@@ -75,12 +80,16 @@ public final class JSApiNodeFS {
 		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
-	public JPromise<Void> writeFile(String path, Object data, WriteFileOptions options) {
-		var encoding = options != null ? options.encoding : null;
-		if (encoding != null && !(data instanceof String)) {
-			throw new IllegalArgumentException("Encoding makes no sense with non-string data");
-		}
-		return data instanceof String s ? writeFile(path, s, encoding) : writeFile(path, (byte[]) data);
+	public JPromise<Void> writeFile(String path, byte[] data, WriteBinaryFileOptions options) {
+		return JPromise.submitToExecutor(() -> {
+			Files.write(Path.of(path), data);
+			return null;
+		}, eventLoop.engine.ioExecutor, eventLoop);
+	}
+
+	public JPromise<Void> writeFile(String path, String data, WriteStringFileOptions options) {
+		var encoding = options != null && options.encoding != null ? options.encoding : DEFAULT_ENCODING;
+		return writeFile(path, data, encoding);
 	}
 
 	public JPromise<Boolean> mkdir(String path) {
@@ -109,7 +118,7 @@ public final class JSApiNodeFS {
 	private static Charset encodingToCharset(String encoding) {
 		return switch (encoding) {
 			case null -> StandardCharsets.UTF_8;
-			case "utf8" -> StandardCharsets.UTF_8;
+			case ENCODING_UTF8 -> StandardCharsets.UTF_8;
 			default -> throw new UnsupportedOperationException("Unsupported encoding: " + encoding);
 		};
 	}
@@ -121,12 +130,14 @@ public final class JSApiNodeFS {
 	public record ReadFileOptions(@OptionalField String encoding) {
 	}
 
+	public record WriteBinaryFileOptions() {
+	}
+
 	/**
-	 * @param encoding if non-null, the data will be encoded from a {@link String} using this encoding (note that this
-	 *                 uses JavaScript encoding names). This parameter must be null if the data is not a
-	 *                 {@link String}.
+	 * @param encoding the name of the encoding to use to encode the data {@link String} (note that this
+	 *                 uses JavaScript encoding names). Defaults to {@value DEFAULT_ENCODING}.
 	 */
-	public record WriteFileOptions(@OptionalField String encoding) {
+	public record WriteStringFileOptions(@OptionalField String encoding) {
 	}
 
 	/**
