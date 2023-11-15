@@ -1,7 +1,5 @@
 package kingfisher.scripting;
 
-import kingfisher.ScriptEngine;
-
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public final class EventLoop {

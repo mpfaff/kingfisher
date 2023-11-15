@@ -1,12 +1,12 @@
-package kingfisher;
+package kingfisher.scripting;
 
 import dev.pfaff.log4truth.NamedLogger;
 import io.pebbletemplates.pebble.PebbleEngine;
+import kingfisher.Main;
+import kingfisher.interop.js.JSApiNodeFS;
 import kingfisher.interop.js.JSImplementations;
 import kingfisher.requests.CallSiteHandler;
 import kingfisher.requests.ScriptRouteHandler;
-import kingfisher.scripting.Script;
-import kingfisher.scripting.ScriptThread;
 import kingfisher.templating.FileLoader;
 import kingfisher.templating.OurExtension;
 import org.graalvm.polyglot.Context;
@@ -35,6 +35,17 @@ public final class ScriptEngine {
 			.logHandler(new PolyglotLogHandler())
 			.option("js.unhandled-rejections", "throw")
 			.build();
+	public static final HostAccess hostAccess;
+	static {
+		var builder = HostAccess.newBuilder()
+				// TODO: figure out why it doesn't work when enabled
+				.methodScoping(false)
+				.allowPublicAccess(true)
+				.allowImplementations(Supplier.class)
+				.allowImplementations(ScriptRouteHandler.class);
+		JSApiNodeFS.registerTypes(builder);
+		hostAccess = builder.build();
+	}
 	public final Map<String, Context.Builder> langContextBuilders = engine.getLanguages()
 			.keySet()
 			.stream()
@@ -60,13 +71,7 @@ public final class ScriptEngine {
 	private Context.Builder makeBuilder(String... languages) {
 		return Context.newBuilder(languages)
 				.allowAllAccess(true)
-				.allowHostAccess(HostAccess.newBuilder()
-						// TODO: figure out why it doesn't work when enabled
-						.methodScoping(false)
-						.allowPublicAccess(true)
-						.allowImplementations(Supplier.class)
-						.allowImplementations(ScriptRouteHandler.class)
-						.build())
+				.allowHostAccess(hostAccess)
 				.engine(engine);
 	}
 

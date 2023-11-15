@@ -1,6 +1,5 @@
 package kingfisher.scripting;
 
-import kingfisher.ScriptEngine;
 import kingfisher.requests.CallSiteHandler;
 import org.graalvm.polyglot.Source;
 

@@ -5,7 +5,7 @@ import io.pebbletemplates.pebble.extension.Filter;
 import io.pebbletemplates.pebble.template.EvaluationContext;
 import io.pebbletemplates.pebble.template.PebbleTemplate;
 import org.graalvm.polyglot.Context;
-import kingfisher.ScriptEngine;
+import kingfisher.scripting.ScriptEngine;
 
 import java.util.List;
 import java.util.Map;

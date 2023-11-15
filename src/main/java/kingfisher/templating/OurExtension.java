@@ -5,7 +5,7 @@ import io.pebbletemplates.pebble.extension.*;
 import io.pebbletemplates.pebble.operator.BinaryOperator;
 import io.pebbletemplates.pebble.operator.UnaryOperator;
 import io.pebbletemplates.pebble.tokenParser.TokenParser;
-import kingfisher.ScriptEngine;
+import kingfisher.scripting.ScriptEngine;
 
 import java.util.List;
 import java.util.Map;

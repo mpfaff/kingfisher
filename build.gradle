@@ -18,6 +18,7 @@ dependencies {
     var polyglotVersion = '23.1.1'
 
     // TODO: check whether we need to switch to community version
+    implementation "org.graalvm.truffle:truffle-api:$polyglotVersion"
     implementation "org.graalvm.polyglot:polyglot:$polyglotVersion"
     implementation "org.graalvm.polyglot:js:$polyglotVersion"
     implementation "org.graalvm.polyglot:python:$polyglotVersion"

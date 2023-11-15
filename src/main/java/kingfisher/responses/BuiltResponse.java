@@ -1,7 +1,7 @@
 package kingfisher.responses;
 
 import kingfisher.Main;
-import kingfisher.ScriptEngine;
+import kingfisher.scripting.ScriptEngine;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
 

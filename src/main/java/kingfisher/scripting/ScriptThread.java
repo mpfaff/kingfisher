@@ -1,7 +1,6 @@
 package kingfisher.scripting;
 
 import dev.pfaff.log4truth.Logger;
-import kingfisher.ScriptEngine;
 import kingfisher.constants.ContentType;
 import kingfisher.constants.Header;
 import kingfisher.constants.Method;

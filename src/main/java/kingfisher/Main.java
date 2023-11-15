@@ -5,6 +5,7 @@ import dev.pfaff.log4truth.NamedLogger;
 import kingfisher.constants.Status;
 import kingfisher.requests.CallSiteHandler;
 import kingfisher.responses.BuiltResponse;
+import kingfisher.scripting.ScriptEngine;
 import kingfisher.scripting.ScriptLoader;
 import kingfisher.util.Errors;
 import org.eclipse.jetty.http.HttpException;

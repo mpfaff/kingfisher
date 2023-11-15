@@ -1,6 +1,5 @@
 package kingfisher.scripting;
 
-import kingfisher.ScriptEngine;
 import kingfisher.interop.Exports;
 import kingfisher.interop.JObject;
 import kingfisher.requests.HttpServerRequest;

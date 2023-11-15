@@ -1,6 +1,6 @@
 package kingfisher.requests;
 
-import kingfisher.ScriptEngine;
+import kingfisher.scripting.ScriptEngine;
 import kingfisher.interop.Exports;
 import kingfisher.responses.ResponseBuilder;
 import kingfisher.scripting.Script;
