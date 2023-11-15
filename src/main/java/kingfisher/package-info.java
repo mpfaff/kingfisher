@@ -11,8 +11,8 @@
  *
  * <h2>Request handling</h2>
  *
- * See {@link kingfisher.requests.RequestScriptThread.Api)}.
+ * See {@link kingfisher.requests.RequestScriptThread.Api}.
  */
-package kingfisher.api;
+package kingfisher;
 
 import kingfisher.requests.ScriptRequestHandler;
