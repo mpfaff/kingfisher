@@ -5,7 +5,6 @@ async function loadTodos() {
     } catch (e) {
         print(`Caught exception while loading TODOs: ${e}`);
     }
-    print(json);
     try {
         return JSON.parse(json);
     } catch (e) {
