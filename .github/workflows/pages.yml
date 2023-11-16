@@ -63,10 +63,8 @@ jobs:
             });
             let fs = require('fs');
             fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/kingfisher-javadoc.zip`, Buffer.from(download.data));
-      - name: Unzip artifact
-        run: unzip ./kingfisher-javadoc.zip
       - name: Add Javadoc to site
-        run: mv ./kingfisher-javadoc ./_site/api/javadoc
+        run: unzip ./kingfisher-javadoc.zip -d ./_site/api/javadoc
       - name: Upload artifact
         # Automatically uploads an artifact from the './_site' directory by default
         uses: actions/upload-pages-artifact@v2
