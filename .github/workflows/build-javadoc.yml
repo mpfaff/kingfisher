@@ -1,8 +1,11 @@
-name: Build
+name: Build Javadoc
 
 on:
-  push:
-  pull_request:
+  workflow_run:
+    workflows: [ Build ]
+    types: [ completed ]
+    branches: [ master ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,12 +25,14 @@ jobs:
     - name: Build with Gradle
       uses: gradle/gradle-build-action@v2.9.0
       with:
-        arguments: --no-daemon jar sourcesJar
+        arguments: --no-daemon javadocJar
         cache-read-only: false
+    - name: Unzip Javadoc jar
+      run: unzip build/libs/kingfisher-*-javadoc.jar -d kingfisher-javadoc
     - name: Upload artifact
       uses: actions/upload-artifact@v3.1.3
       with:
-        name: kingfisher
-        path: build/libs/kingfisher-*.jar
+        name: kingfisher-javadoc
+        path: kingfisher-javadoc
         if-no-files-found: error
         retention-days: 90
