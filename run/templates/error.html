@@ -8,7 +8,18 @@
     p {
         margin: 0;
     }
+
+    .diagnostics {
+        font-size: 2em;
+        margin-top: 2em;
+        list-style: none;
+    }
 </style>
 
 <p style="font-size: 4em">{{message}}</p>
 <p style="font-size: 2em">See server logs for details</p>
+<ul class="diagnostics">
+{% for diagnostic in diagnostics %}
+    <li>{{ diagnostic }}</li>
+{% endfor %}
+</ul>

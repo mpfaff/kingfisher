@@ -21,17 +21,7 @@ public record BuiltResponse(int status, Map<String, String> headers, Writable wr
 	}
 
 	public static BuiltResponse error(ScriptEngine engine, int status, String message) {
-		var s = new StringWriter();
-		try {
-			engine.pebble.getTemplate("error.html")
-					.evaluate(s, Map.of("message", message));
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-		return new ResponseBuilder()
-				.status(status)
-				.content(s.toString())
-				.finish();
+		return new ErrorResponseBuilder(engine, status, message).finish();
 	}
 
 	public void send(Response response, Callback callback) {

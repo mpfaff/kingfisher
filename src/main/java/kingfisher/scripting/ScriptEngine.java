@@ -43,6 +43,7 @@ public final class ScriptEngine {
 				.allowPublicAccess(true)
 				.allowImplementations(Supplier.class)
 				.allowImplementations(ScriptRouteHandler.class);
+		Api.registerTypes(builder);
 		JSApiNodeFS.registerTypes(builder);
 		hostAccess = builder.build();
 	}
@@ -67,6 +68,10 @@ public final class ScriptEngine {
 			.executor(httpClientExecutor)
 			.build();
 
+	public ScriptEngine() {
+		handler = new MutableCallSite(CallSiteHandler.chainHandlers(this, List.of()));
+	}
+
 
 	private Context.Builder makeBuilder(String... languages) {
 		return Context.newBuilder(languages)
@@ -83,7 +88,7 @@ public final class ScriptEngine {
 			.loader(new FileLoader(TEMPLATES_DIR))
 			.extension(new OurExtension(this))
 			.build();
-	public final MutableCallSite handler = new MutableCallSite(CallSiteHandler.chainHandlers(List.of()));
+	public final MutableCallSite handler;
 
 	private void setupBindings(ScriptThread thread, Context ctx, String lang) {
 		var start = System.nanoTime();

@@ -31,13 +31,14 @@ public final class RequestScriptThread extends ScriptThread {
 	}
 
 	/**
-	 * Refer to {@link ScriptThread.RegistrationApi}.
+	 * Refer to {@link kingfisher.scripting.RegistrationApi}.
 	 */
-	public final class RegistrationApi extends ScriptThread.RegistrationApi {
+	public final class RegistrationApi extends kingfisher.scripting.RegistrationApi {
 		private RegistrationApi() {}
 
 		@Override
 		public void addRoute(String method, String path, ScriptRouteHandler handler) {
+			if (RequestScriptThread.this.handler != null) return;
 			if (nextHandlerId() == targetHandler) {
 				RequestScriptThread.this.handler = new WrappedScriptRequestHandler(RequestScriptThread.this.eventLoop, handler);
 			}
@@ -47,7 +48,7 @@ public final class RequestScriptThread extends ScriptThread {
 	/**
 	 * The API available to each script when it is executed to handle a request.
 	 */
-	public final class Api {
+	public static final class Api {
 		/**
 		 * Returns a new {@link ResponseBuilder} with the default status code of {@value kingfisher.constants.Status#OK}.
 		 */

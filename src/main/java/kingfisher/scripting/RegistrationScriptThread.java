@@ -44,9 +44,9 @@ public final class RegistrationScriptThread extends ScriptThread {
 	}
 
 	/**
-	 * Refer to {@link ScriptThread.RegistrationApi}.
+	 * Refer to {@link kingfisher.scripting.RegistrationApi}.
 	 */
-	public final class RegistrationApi extends ScriptThread.RegistrationApi {
+	public final class RegistrationApi extends kingfisher.scripting.RegistrationApi {
 		private RegistrationApi() {}
 
 		@Override

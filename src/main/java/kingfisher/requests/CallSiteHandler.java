@@ -1,8 +1,8 @@
 package kingfisher.requests;
 
-import kingfisher.Main;
 import kingfisher.constants.Status;
-import org.eclipse.jetty.http.HttpException;
+import kingfisher.responses.ErrorResponseBuilder;
+import kingfisher.scripting.ScriptEngine;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
@@ -17,8 +17,8 @@ import java.util.List;
 
 import static dev.pfaff.log4truth.StandardTags.DEBUG;
 import static java.lang.invoke.MethodHandles.*;
-import static java.lang.invoke.MethodHandles.guardWithTest;
 import static java.lang.invoke.MethodType.methodType;
+import static kingfisher.Main.WEB_LOGGER;
 
 public final class CallSiteHandler extends Handler.Abstract {
 	public static final MethodType HANDLER_TYPE = methodType(boolean.class,
@@ -59,7 +59,7 @@ public final class CallSiteHandler extends Handler.Abstract {
 					CallSiteHandler.HANDLER_TYPE);
 			MH_handleFallback = MethodHandles.lookup().findStatic(CallSiteHandler.class,
 					"handleFallback",
-					CallSiteHandler.HANDLER_TYPE);
+					CallSiteHandler.HANDLER_TYPE.insertParameterTypes(0, ScriptEngine.class));
 			MH_handle = MethodHandles.lookup().findVirtual(RequestHandler.class,
 					"handle",
 					CallSiteHandler.HANDLER_TYPE);
@@ -92,22 +92,26 @@ public final class CallSiteHandler extends Handler.Abstract {
 	 *
 	 * @param handlers the handlers to chain
 	 */
-	public static MethodHandle chainHandlers(List<RequestHandler> handlers) {
-		Main.WEB_LOGGER.log(() -> "handlers: " + handlers, List.of(DEBUG));
+	public static MethodHandle chainHandlers(ScriptEngine engine, List<RequestHandler> handlers) {
+		WEB_LOGGER.log(() -> "handlers: " + handlers, List.of(DEBUG));
 		var a = new ArrayList<MethodHandle>(handlers.size() + 1);
 		a.add(MH_handleLogging);
 		for (var handler : handlers) a.add(MH_handle.bindTo(handler));
-		a.add(MH_handleFallback);
+		a.add(MH_handleFallback.bindTo(engine));
 		return chainHandlers(CallSiteHandler.HANDLER_TYPE, a);
 	}
 
 	private static boolean handleLogging(Request request, Response response, Callback callback) throws Exception {
-		Main.WEB_LOGGER.log(() -> request.getMethod() + " " + request.getHttpURI().getCanonicalPath(),
+		WEB_LOGGER.log(() -> request.getMethod() + " " + request.getHttpURI().getCanonicalPath(),
 				List.of("REQUEST"));
 		return false;
 	}
 
-	private static boolean handleFallback(Request request, Response response, Callback callback) throws Exception {
-		throw new HttpException.RuntimeException(Status.NOT_FOUND);
+	private static boolean handleFallback(ScriptEngine engine, Request request, Response response, Callback callback) throws Exception {
+		new ErrorResponseBuilder(engine, Status.NOT_FOUND, "404 Not Found")
+				.diagnostic("There may be a route for the path, but not for the attempted method")
+				.finish()
+				.send(response, callback);
+		return true;
 	}
 }

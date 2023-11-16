@@ -5,11 +5,15 @@
 
 Kingfisher provides a robust (WIP) API to scripts.
 
-The full Javadoc is available [here]({{ 'javadoc' | relative_url }}), but most of the APIs in there are not intended to be used by scripts and are not exported to them.
+The full Javadoc is available [here]({{ '/api/javadoc' | relative_url }}), but most of the APIs in there are not intended to be used by scripts and are not exported to them.
+
+## Core
+
+Scripts of all languages and during all phases have access to a set of core APIs that behave the same irrespective of the phase. See [the Javadoc]({{ '/api/javadoc/kingfisher/scripting/Api.html' | relative_url }}) for a listing of these.
 
 ## Registration
 
-Scripts must register themselves to handle various events. See [the Javadoc]({{ '/api/javadoc/kingfisher/scripting/ScriptThread.RegistrationApi.html' | relative_url }}) for a listing of these.
+Scripts must register themselves to handle various events. See [the Javadoc]({{ '/api/javadoc/kingfisher/scripting/RegistrationApi.html' | relative_url }}) for a listing of these.
 
 ## Request handling
 

@@ -85,7 +85,7 @@ public final class ScriptLoader {
 			}
 		}
 		staging.complete();
-		engine.handler.setTarget(CallSiteHandler.chainHandlers(staging.requestHandlers));
+		engine.handler.setTarget(CallSiteHandler.chainHandlers(engine, staging.requestHandlers));
 	}
 
 	private static String detectLanguage(File file) throws IOException {
