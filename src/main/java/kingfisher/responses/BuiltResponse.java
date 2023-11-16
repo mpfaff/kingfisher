@@ -11,7 +11,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.pfaff.log4truth.StandardTags.DEBUG;
 import static dev.pfaff.log4truth.StandardTags.ERROR;
+import static kingfisher.Main.WEB_LOGGER;
 
 public record BuiltResponse(int status, Map<String, String> headers, Writable writable) {
 	public BuiltResponse {
@@ -36,13 +38,13 @@ public record BuiltResponse(int status, Map<String, String> headers, Writable wr
 		try {
 			response.setStatus(status);
 			headers.forEach(response.getHeaders()::add);
-			Main.WEB_LOGGER.log(() -> "Transmitted status and content type");
+			WEB_LOGGER.log(() -> "Transmitted status and content type", List.of(DEBUG));
 			if (writable != null) {
 				writable.writeTo(response, callback);
-				Main.WEB_LOGGER.log(() -> "Transmitted content");
+				WEB_LOGGER.log(() -> "Transmitted content", List.of(DEBUG));
 			}
 		} catch (Throwable e) {
-			Main.WEB_LOGGER.log(() -> "Caught exception while transmitting response", e, List.of(ERROR));
+			WEB_LOGGER.log(() -> "Caught exception while transmitting response", e, List.of(ERROR));
 		}
 	}
 }

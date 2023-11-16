@@ -2,10 +2,10 @@ package kingfisher.scripting;
 
 import kingfisher.interop.Exports;
 import kingfisher.interop.JObject;
-import kingfisher.requests.HttpServerRequest;
-import kingfisher.requests.RegexRouteHandler;
-import kingfisher.requests.RequestScriptThread;
-import kingfisher.requests.ScriptRouteHandler;
+import kingfisher.requests.*;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Response;
+import org.eclipse.jetty.util.Callback;
 import org.graalvm.polyglot.Value;
 
 import java.util.List;
@@ -58,10 +58,32 @@ public final class RegistrationScriptThread extends ScriptThread {
 			staging.checkState();
 
 			int handlerId = nextHandlerId();
-			staging.requestHandlers.add(new RegexRouteHandler(method, Pattern.compile(path), (request, arguments, response, callback) -> {
-				SCRIPT_LOGGER.log(() -> "Submitting task to process script handler on a worker thread");
+			staging.requestHandlers.add(new RegexRouteHandler(method,
+					Pattern.compile(path),
+					new WrappedScriptRouteHandler(engine, script, handlerId)));
+		}
+
+		private static final class WrappedScriptRouteHandler implements RouteHandler {
+			private final ScriptEngine engine;
+			private final Script script;
+			private final int handlerId;
+
+			public WrappedScriptRouteHandler(ScriptEngine engine, Script script, int handlerId) {
+				this.engine = engine;
+				this.script = script;
+				this.handlerId = handlerId;
+			}
+
+			@Override
+			public String toString() {
+				return "Handler[" + "script=" + script +
+						", " + "handlerId=" + handlerId +
+						']';
+			}
+
+			@Override
+			public void handle(Request request, Map<String, String> arguments, Response response, Callback callback) throws Exception {
 				engine.executor.submit(() -> {
-					SCRIPT_LOGGER.log(() -> "Processing script handler");
 					var thread = new RequestScriptThread(engine, script, handlerId);
 					try (var ctx = engine.createExecutionScriptContext(thread)) {
 						ctx.enter();
@@ -72,7 +94,8 @@ public final class RegistrationScriptThread extends ScriptThread {
 							long elapsed;
 
 							//noinspection unchecked,rawtypes
-							var res = thread.handler.handle(new HttpServerRequest(thread, request), JObject.wrap((Map<String, Object>) (Map) arguments));
+							var res = thread.handler.handle(new HttpServerRequest(thread, request),
+									JObject.wrap((Map<String, Object>) (Map) arguments));
 
 							if (res == null) {
 								throw new NullPointerException("Script returned null response object");
@@ -87,7 +110,7 @@ public final class RegistrationScriptThread extends ScriptThread {
 						}
 					}
 				}).get().send(response, callback);
-			}));
+			}
 		}
 	}
 }

@@ -5,6 +5,7 @@ import dev.pfaff.log4truth.NamedLogger;
 import kingfisher.constants.Status;
 import kingfisher.requests.CallSiteHandler;
 import kingfisher.responses.BuiltResponse;
+import kingfisher.responses.ResponseBuilder;
 import kingfisher.scripting.ScriptEngine;
 import kingfisher.scripting.ScriptLoader;
 import kingfisher.util.Errors;
@@ -16,7 +17,8 @@ import java.util.List;
 
 import static dev.pfaff.log4truth.StandardTags.DEBUG;
 import static dev.pfaff.log4truth.StandardTags.ERROR;
-import static kingfisher.Config.BIND_PORT;
+import static kingfisher.Config.*;
+import static kingfisher.util.Timing.formatTime;
 import static org.eclipse.jetty.server.handler.ErrorHandler.ERROR_EXCEPTION;
 
 public final class Main {
@@ -24,12 +26,21 @@ public final class Main {
 	public static final NamedLogger SCRIPT_LOGGER = new NamedLogger("Script Engine");
 
 	public static void main(String[] args) {
-		LogSink.addFilterToGlobal((source, tags, thread) -> {
-			return !source.startsWith("org.eclipse.jetty.") || !tags.contains(DEBUG);
-		});
-		LogSink.addFilterToGlobal((source, tags, thread) -> {
-			return !source.startsWith("io.pebbletemplates.pebble.") || !tags.contains("TRACE");
-		});
+		if (!Config.shouldLog(DEBUG)) {
+			LogSink.addFilterToGlobal((source, tags, thread) -> {
+				return !tags.contains(DEBUG) && !tags.contains("TRACE");
+			});
+		} else {
+			LogSink.addFilterToGlobal((source, tags, thread) -> {
+				return !source.startsWith("org.eclipse.jetty.") || !tags.contains(DEBUG);
+			});
+			LogSink.addFilterToGlobal((source, tags, thread) -> {
+				return !source.startsWith("io.pebbletemplates.pebble.") || !tags.contains("TRACE");
+			});
+		}
+
+		LogSink.addFilterToGlobal(Config.envLogFilter("REQUEST"));
+		LogSink.addFilterToGlobal(Config.envLogFilter("TIMING"));
 
 		ScriptEngine engine = new ScriptEngine();
 
@@ -45,10 +56,19 @@ public final class Main {
 			server.setHandler(new Handler.Abstract() {
 				@Override
 				public boolean handle(Request request, Response response, Callback callback) {
+					var start = System.nanoTime();
 					try {
 						return handler.handle(request, response, callback);
+//						new ResponseBuilder()
+//								.content("Hello, World!")
+//								.finish()
+//								.send(response, callback);
+//						return true;
 					} catch (Throwable e) {
 						return handleError(engine, response, callback, e);
+					} finally {
+						var elapsed = System.nanoTime() - start;
+						WEB_LOGGER.log(() -> "Handled request in " + formatTime(elapsed), List.of("TIMING"));
 					}
 				}
 			});

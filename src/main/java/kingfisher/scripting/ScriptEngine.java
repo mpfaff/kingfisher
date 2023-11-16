@@ -2,7 +2,6 @@ package kingfisher.scripting;
 
 import dev.pfaff.log4truth.NamedLogger;
 import io.pebbletemplates.pebble.PebbleEngine;
-import kingfisher.Main;
 import kingfisher.interop.js.JSApiNodeFS;
 import kingfisher.interop.js.JSImplementations;
 import kingfisher.requests.CallSiteHandler;
@@ -28,6 +27,7 @@ import java.util.stream.Collectors;
 
 import static dev.pfaff.log4truth.StandardTags.*;
 import static kingfisher.Config.TEMPLATES_DIR;
+import static kingfisher.Main.SCRIPT_LOGGER;
 import static kingfisher.util.Timing.formatTime;
 
 public final class ScriptEngine {
@@ -113,7 +113,7 @@ public final class ScriptEngine {
 		{
 			long now = System.nanoTime();
 			long elapsed = now - start;
-			Main.SCRIPT_LOGGER.log(() -> "Got bindings object for '" + lang + "' in " + formatTime(elapsed), List.of("TIMING"));
+			SCRIPT_LOGGER.log(() -> "Got bindings object for '" + lang + "' in " + formatTime(elapsed), List.of("TIMING"));
 			start = now;
 		}
 
@@ -125,11 +125,11 @@ public final class ScriptEngine {
 			{
 				long now = System.nanoTime();
 				long elapsed = now - start;
-				Main.SCRIPT_LOGGER.log(() -> "Setup bindings for '" + lang + "' in " + formatTime(elapsed), List.of("TIMING"));
+				SCRIPT_LOGGER.log(() -> "Setup bindings for '" + lang + "' in " + formatTime(elapsed), List.of("TIMING"));
 				start = now;
 			}
 		} catch (Throwable e) {
-			Main.SCRIPT_LOGGER.log(() -> "Caught exception while binding api for language " + lang, e, List.of(ERROR));
+			SCRIPT_LOGGER.log(() -> "Caught exception while binding api for language " + lang, e, List.of(ERROR));
 			throw e;
 		}
 	}
@@ -169,12 +169,21 @@ public final class ScriptEngine {
 		long elapsed;
 
 		try {
-			ctx.eval(script.source());
+			var evalResult = ctx.eval(script.source());
+
+//			SCRIPT_LOGGER.log(() -> "Script evaluated to " + evalResult);
+//			SCRIPT_LOGGER.log(() -> "Exports: " + evalResult.getMemberKeys());
+//
+//			if (evalResult.canInvokeMember("_kingfisher_entrypoint")) {
+//				SCRIPT_LOGGER.log(() -> "Script has an entrypoint function");
+//				var entrypointResult = evalResult.invokeMember("_kingfisher_entrypoint");
+//				SCRIPT_LOGGER.log(() -> "Evaluated entrypoint to " + entrypointResult);
+//			}
 
 			elapsed = System.nanoTime() - start;
-			Main.SCRIPT_LOGGER.log(() -> "Loaded script " + script.name() + " in " + formatTime(elapsed));
+			SCRIPT_LOGGER.log(() -> "Loaded script " + script.name() + " in " + formatTime(elapsed), List.of("TIMING"));
 		} catch (Throwable e) {
-			Main.SCRIPT_LOGGER.log(() -> "Unable to load script " + script.name(), e, List.of(ERROR));
+			SCRIPT_LOGGER.log(() -> "Unable to load script " + script.name(), e, List.of(ERROR));
 		}
 	}
 

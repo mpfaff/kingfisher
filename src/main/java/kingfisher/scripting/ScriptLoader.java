@@ -3,6 +3,7 @@ package kingfisher.scripting;
 import kingfisher.requests.CallSiteHandler;
 import org.graalvm.polyglot.Source;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardWatchEventKinds;
@@ -87,15 +88,19 @@ public final class ScriptLoader {
 		engine.handler.setTarget(CallSiteHandler.chainHandlers(staging.requestHandlers));
 	}
 
+	private static String detectLanguage(File file) throws IOException {
+		return Source.findLanguage(file);
+	}
+
 	private static List<Script> loadScripts() throws IOException {
 		try (var stream = Files.list(SCRIPTS_DIR)) {
 			return stream.sorted().map(scriptPath -> {
 						var file = scriptPath.toFile();
 						try {
-							var source = Source.newBuilder(Source.findLanguage(file),
-									Files.readString(scriptPath),
-									scriptPath.toString()).build();
-							SCRIPT_LOGGER.log(() -> "Read script " + scriptPath);
+							var source = Source.newBuilder(detectLanguage(file), file)
+									.name(scriptPath.toString())
+									.build();
+							SCRIPT_LOGGER.log(() -> "Read script " + scriptPath + " (language '" + source.getLanguage() + "')");
 							return new Script(source);
 						} catch (Throwable e) {
 							SCRIPT_LOGGER.log(() -> "Unable to read script " + scriptPath, e, List.of(ERROR));

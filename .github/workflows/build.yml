@@ -38,3 +38,10 @@ jobs:
         path: build/libs/kingfisher-*.jar
         if-no-files-found: error
         retention-days: 90
+    - name: Upload fat artifact
+      uses: actions/upload-artifact@v3.1.3
+      with:
+        name: kingfisher-fat
+        path: build/distributions/kingfisher-*.tar
+        if-no-files-found: error
+        retention-days: 90
