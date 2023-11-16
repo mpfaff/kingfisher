@@ -1,5 +1,6 @@
 package kingfisher.scripting;
 
+import dev.pfaff.log4truth.Logger;
 import kingfisher.requests.CallSiteHandler;
 import org.graalvm.polyglot.Source;
 
@@ -9,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.Watchable;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import static dev.pfaff.log4truth.StandardTags.ERROR;
 import static dev.pfaff.log4truth.StandardTags.WARN;
@@ -76,16 +78,25 @@ public final class ScriptLoader {
 	}
 
 	private void activateScripts() throws Exception {
-		var staging = new Registrar();
-		var api = new RegistrationScriptThread(engine, staging);
-		try (var ctx = engine.createRegistrationScriptContext(api)) {
-			for (var script : ScriptLoader.loadScripts()) {
-				api.setScript(script);
-				engine.loadScript(ctx, script);
+		var registrar = new Registrar();
+		ScriptLoader.loadScripts().stream().map(script -> engine.runWithScript(
+				() -> new RegistrationScriptThread(engine, new Registrar(), script),
+				"Script registration",
+				thread -> {
+					thread.registrar.complete();
+					Logger.log(() -> "Registered script " + script);
+					return thread;
+				}
+		)).forEach(fut -> {
+			try {
+				var thread = fut.get();
+				registrar.requestHandlers.addAll(thread.registrar.requestHandlers);
+			} catch (InterruptedException | ExecutionException e) {
+				throw new RuntimeException(e);
 			}
-		}
-		staging.complete();
-		engine.handler.setTarget(CallSiteHandler.chainHandlers(engine, staging.requestHandlers));
+		});
+		registrar.complete();
+		engine.handler.setTarget(CallSiteHandler.chainHandlers(engine, registrar.requestHandlers));
 	}
 
 	private static String detectLanguage(File file) throws IOException {
@@ -97,11 +108,11 @@ public final class ScriptLoader {
 			return stream.sorted().map(scriptPath -> {
 						var file = scriptPath.toFile();
 						try {
-							var source = Source.newBuilder(detectLanguage(file), file)
+							var script = new Script(Source.newBuilder(detectLanguage(file), file)
 									.name(scriptPath.toString())
-									.build();
-							SCRIPT_LOGGER.log(() -> "Read script " + scriptPath + " (language '" + source.getLanguage() + "')");
-							return new Script(source);
+									.build());
+							SCRIPT_LOGGER.log(() -> "Read script " + script);
+							return script;
 						} catch (Throwable e) {
 							SCRIPT_LOGGER.log(() -> "Unable to read script " + scriptPath, e, List.of(ERROR));
 							return null;

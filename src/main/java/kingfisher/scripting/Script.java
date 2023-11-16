@@ -39,6 +39,6 @@ public final class Script {
 
 	@Override
 	public String toString() {
-		return name();
+		return name() + " (language '" + source.getLanguage() + "')";
 	}
 }

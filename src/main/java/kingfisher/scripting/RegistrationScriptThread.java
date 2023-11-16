@@ -3,44 +3,31 @@ package kingfisher.scripting;
 import kingfisher.interop.Exports;
 import kingfisher.interop.JObject;
 import kingfisher.requests.*;
+import kingfisher.responses.BuiltResponse;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
 import org.graalvm.polyglot.Value;
 
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-
-import static kingfisher.Main.SCRIPT_LOGGER;
-import static kingfisher.util.Timing.formatTime;
 
 /**
  * The registration phase loads each script and evaluates them so that they can register their routes with the engine.
  */
 public final class RegistrationScriptThread extends ScriptThread {
-	private Script script;
-	private final Registrar staging;
+	public final Registrar registrar;
 
-	public RegistrationScriptThread(ScriptEngine engine, Registrar staging) {
-		super(engine);
-		this.staging = staging;
+	public RegistrationScriptThread(ScriptEngine engine, Registrar registrar, Script script) {
+		super(engine, script);
+		this.registrar = registrar;
+		lateInit();
 	}
 
 	@Override
 	public void exportApi(String lang, Value scope) {
 		super.exportApi(lang, scope);
 		Exports.objectMembers(new RegistrationApi()).export(scope);
-	}
-
-	@Override
-	public Script script() {
-		return script;
-	}
-
-	public void setScript(Script script) {
-		resetHandlerId();
-		this.script = script;
 	}
 
 	/**
@@ -53,14 +40,16 @@ public final class RegistrationScriptThread extends ScriptThread {
 		public void addRoute(String method, String path, ScriptRouteHandler handler) {
 			var engine = RegistrationScriptThread.this.engine;
 			var script = RegistrationScriptThread.this.script;
-			var staging = RegistrationScriptThread.this.staging;
+			var registrar = RegistrationScriptThread.this.registrar;
 
-			staging.checkState();
+			registrar.checkState();
 
 			int handlerId = nextHandlerId();
-			staging.requestHandlers.add(new RegexRouteHandler(method,
+			var requestHandler = new RegexRouteHandler(method,
 					Pattern.compile(path),
-					new WrappedScriptRouteHandler(engine, script, handlerId)));
+//					engine.patternCache.get(path),
+					new WrappedScriptRouteHandler(engine, script, handlerId));
+			registrar.requestHandlers.add(requestHandler);
 		}
 
 		private static final class WrappedScriptRouteHandler implements RouteHandler {
@@ -83,32 +72,21 @@ public final class RegistrationScriptThread extends ScriptThread {
 
 			@Override
 			public void handle(Request request, Map<String, String> arguments, Response response, Callback callback) throws Exception {
-				engine.executor.submit(() -> {
-					var thread = new RequestScriptThread(engine, script, handlerId);
-					try (var ctx = engine.createExecutionScriptContext(thread)) {
-						ctx.enter();
-						try {
-							engine.loadScript(ctx, script);
-
-							var start = System.nanoTime();
-							long elapsed;
-
-							//noinspection unchecked,rawtypes
-							var res = thread.handler.handle(new HttpServerRequest(thread, request),
-									JObject.wrap((Map<String, Object>) (Map) arguments));
-
-							if (res == null) {
-								throw new NullPointerException("Script returned null response object");
-							}
-
-							elapsed = System.nanoTime() - start;
-							SCRIPT_LOGGER.log(() -> "Script route handler took " + formatTime(elapsed), List.of("TIMING"));
-
-							return res;
-						} finally {
-							ctx.leave();
-						}
+				engine.runWithScript(() -> new RequestScriptThread(engine, script, handlerId), "Script route handler", thread -> {
+					BuiltResponse res;
+					try {
+						//noinspection unchecked,rawtypes
+						res = thread.handler.handle(new HttpServerRequest(thread, request),
+								JObject.wrap((Map<String, Object>) (Map) arguments));
+					} catch (Exception e) {
+						throw new RuntimeException(e);
 					}
+
+					if (res == null) {
+						throw new NullPointerException("Script returned null response object");
+					}
+
+					return res;
 				}).get().send(response, callback);
 			}
 		}

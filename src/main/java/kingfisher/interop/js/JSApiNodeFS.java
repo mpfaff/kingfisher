@@ -5,11 +5,14 @@ import kingfisher.scripting.EventLoop;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 import static kingfisher.interop.ValueUtil.recordConverter;
 
@@ -43,6 +46,58 @@ public final class JSApiNodeFS {
 				MkdirOptions.class,
 				v -> v.hasMembers() || v.hasHashEntries(),
 				recordConverter(MkdirOptions.class));
+	}
+
+	public JPromise<Boolean> exists(String path) {
+		return JPromise.submitToExecutor(() -> Files.exists(Path.of(path)), eventLoop.engine.ioExecutor, eventLoop);
+	}
+
+	/**
+	 * Equivalent to NodeJS's
+	 * <a href="https://nodejs.org/dist/latest-v21.x/docs/api/fs.html#fspromisesreaddirpath-options">{@code readdir}
+	 * </a> function.
+	 */
+	public JPromise<List<String>> readDir(String path) {
+		return (JPromise<List<String>>) (JPromise) readDir(path, null);
+	}
+
+	/**
+	 * Equivalent to NodeJS's
+	 * <a href="https://nodejs.org/dist/latest-v21.x/docs/api/fs.html#fspromisesreaddirpath-options">{@code readdir}
+	 * </a> function.
+	 */
+	public JPromise<List<?>> readDir(String pathString, ReadDirOptions options) {
+		var path = Path.of(pathString);
+		return JPromise.submitToExecutor(() -> {
+			boolean recursive = options != null && options.recursive != null && options.recursive;
+			if (options != null && options.withFileTypes != null && options.withFileTypes) {
+				var list = new ArrayList<JSDirEntry>();
+				Files.walkFileTree(path,
+						Set.of(),
+						recursive ? Integer.MAX_VALUE : 1,
+						new SimpleFileVisitor<>() {
+							@Override
+							public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+								if (file != path) list.add(new JSDirEntry(file, attrs.isDirectory(), attrs.isRegularFile(), attrs.isSymbolicLink(), attrs.isOther()));
+								return FileVisitResult.CONTINUE;
+							}
+						});
+				return list;
+			} else {
+				var list = new ArrayList<String>();
+				Files.walkFileTree(path,
+						Set.of(),
+						recursive ? Integer.MAX_VALUE : 1,
+						new SimpleFileVisitor<>() {
+							@Override
+							public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+								if (file != path) list.add(file.toString());
+								return FileVisitResult.CONTINUE;
+							}
+						});
+				return list;
+			}
+		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
 	public JPromise<byte[]> readFile(String path) {
@@ -145,5 +200,12 @@ public final class JSApiNodeFS {
 	 *                  false}, such a case will throw an error.
 	 */
 	public record MkdirOptions(@OptionalField Boolean recursive) {
+	}
+
+	/**
+	 * @param withFileTypes if {@code true}, entries will be a {@link JSDirEntry} instance instead of a {@link String}.
+	 * @param recursive     if {@code true}, the directory will be read recursively.
+	 */
+	public record ReadDirOptions(@OptionalField Boolean withFileTypes, @OptionalField Boolean recursive) {
 	}
 }

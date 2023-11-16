@@ -8,14 +8,13 @@ import kingfisher.scripting.ScriptThread;
 import org.graalvm.polyglot.Value;
 
 public final class RequestScriptThread extends ScriptThread {
-	private final Script script;
 	private final int targetHandler;
 	public WrappedScriptRequestHandler handler;
 
 	public RequestScriptThread(ScriptEngine engine, Script script, int targetHandler) {
-		super(engine);
-		this.script = script;
+		super(engine, script);
 		this.targetHandler = targetHandler;
+		lateInit();
 	}
 
 	@Override
@@ -23,11 +22,6 @@ public final class RequestScriptThread extends ScriptThread {
 		super.exportApi(lang, scope);
 		Exports.objectMembers(new RegistrationApi()).export(scope);
 		Exports.objectMembers(new Api()).export(scope);
-	}
-
-	@Override
-	public Script script() {
-		return script;
 	}
 
 	/**

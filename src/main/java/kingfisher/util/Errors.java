@@ -5,7 +5,7 @@ import java.util.concurrent.ExecutionException;
 
 public final class Errors {
 	public static Throwable unwrapError(Throwable e) {
-		while (e instanceof ExecutionException || e instanceof CompletionException) {
+		while (e instanceof ExecutionException || e instanceof CompletionException || e.getClass() == RuntimeException.class) {
 			e = e.getCause();
 		}
 		return e;

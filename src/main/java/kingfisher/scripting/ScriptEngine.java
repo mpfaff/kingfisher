@@ -8,6 +8,9 @@ import kingfisher.requests.CallSiteHandler;
 import kingfisher.requests.ScriptRouteHandler;
 import kingfisher.templating.FileLoader;
 import kingfisher.templating.OurExtension;
+import kingfisher.util.BlockingOfferQueue;
+import kingfisher.util.Cache;
+import kingfisher.util.MapCache;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
@@ -17,12 +20,12 @@ import java.lang.invoke.MutableCallSite;
 import java.net.http.HttpClient;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static dev.pfaff.log4truth.StandardTags.*;
@@ -51,13 +54,19 @@ public final class ScriptEngine {
 			.keySet()
 			.stream()
 			.collect(Collectors.toMap(Function.identity(), this::makeBuilder));
-	public final Context.Builder allLangContextBuilder =
-			makeBuilder(engine.getLanguages().keySet().toArray(String[]::new));
 
 	// executors
-	public final ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofPlatform()
-			.name("Script Executor #", 0)
-			.factory());
+	public final ExecutorService executor = new ThreadPoolExecutor(
+			Runtime.getRuntime().availableProcessors(),
+//			Runtime.getRuntime().availableProcessors() * 32,
+			Runtime.getRuntime().availableProcessors(),
+			60L,
+			TimeUnit.SECONDS,
+			new BlockingOfferQueue<>(new ArrayBlockingQueue<>(Runtime.getRuntime().availableProcessors())),
+			Thread.ofPlatform()
+				.name("Script Executor #", 0)
+				.factory()
+	);
 	public final ExecutorService ioExecutor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual()
 			.name("I/O #", 0)
 			.factory());
@@ -67,6 +76,8 @@ public final class ScriptEngine {
 	public final HttpClient httpClient = HttpClient.newBuilder()
 			.executor(httpClientExecutor)
 			.build();
+
+//	public final Cache<String, Pattern> patternCache = new MapCache<>(Pattern::compile);
 
 	public ScriptEngine() {
 		handler = new MutableCallSite(CallSiteHandler.chainHandlers(this, List.of()));
@@ -139,23 +150,8 @@ public final class ScriptEngine {
 		}
 	}
 
-	public Context createRegistrationScriptContext(ScriptThread thread) {
-		var ctx = allLangContextBuilder.build();
-
-		try {
-			for (var lang : engine.getLanguages().keySet()) {
-				setupBindings(thread, ctx, lang);
-			}
-
-			return ctx;
-		} catch (Throwable e) {
-			ctx.close(true);
-			throw e;
-		}
-	}
-
-	public Context createExecutionScriptContext(ScriptThread thread) {
-		var lang = thread.script().source().getLanguage();
+	Context createScriptContext(ScriptThread thread) {
+		var lang = thread.script.source().getLanguage();
 
 		var ctx = langContextBuilders.get(lang).build();
 
@@ -169,7 +165,7 @@ public final class ScriptEngine {
 		}
 	}
 
-	public void loadScript(Context ctx, Script script) {
+	void loadScript(Context ctx, Script script) {
 		var start = System.nanoTime();
 		long elapsed;
 
@@ -190,6 +186,19 @@ public final class ScriptEngine {
 		} catch (Throwable e) {
 			SCRIPT_LOGGER.log(() -> "Unable to load script " + script.name(), e, List.of(ERROR));
 		}
+	}
+
+	public <T extends ScriptThread, R> Future<R> runWithScript(Supplier<T> scriptThreadSupplier, String description, Function<T, R> action) {
+		return executor.submit(() -> {
+			var start = System.nanoTime();
+			long elapsed;
+			try (var thread = scriptThreadSupplier.get()) {
+				return action.apply(thread);
+			} finally {
+				elapsed = System.nanoTime() - start;
+				SCRIPT_LOGGER.log(() -> description + " took " + formatTime(elapsed), List.of("TIMING"));
+			}
+		});
 	}
 
 	private static class PolyglotLogHandler extends Handler {

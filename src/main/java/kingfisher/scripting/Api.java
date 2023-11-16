@@ -148,7 +148,7 @@ public final class Api {
 	 * the value will be stored and returned when the script is reevaluated on each request.
 	 */
 	public Object getState(Supplier<Object> initFunction) {
-		return thread.script().getState(initFunction);
+		return thread.script.getState(initFunction);
 	}
 
 	/**
@@ -185,7 +185,7 @@ public final class Api {
 	 * Logs the provided object. The log record will be specified to originate in the thread's script.
 	 */
 	public void print(Object o) {
-		Logger.log("Script[" + thread.script() + "]", () -> Objects.toString(o));
+		Logger.log("Script[" + thread.script + "]", () -> Objects.toString(o));
 	}
 
 	public String getMetaQualifiedName(Value value) {
