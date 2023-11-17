@@ -2,19 +2,18 @@ package kingfisher.scripting;
 
 import dev.pfaff.log4truth.NamedLogger;
 import io.pebbletemplates.pebble.PebbleEngine;
+import kingfisher.channel.ScriptChannelHandler;
+import kingfisher.interop.ValueUtil;
 import kingfisher.interop.js.JSApiNodeFS;
 import kingfisher.interop.js.JSImplementations;
 import kingfisher.requests.CallSiteHandler;
 import kingfisher.requests.ScriptRouteHandler;
+import kingfisher.responses.BuiltResponse;
 import kingfisher.templating.FileLoader;
 import kingfisher.templating.OurExtension;
 import kingfisher.util.BlockingOfferQueue;
-import kingfisher.util.Cache;
-import kingfisher.util.MapCache;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.Source;
+import kingfisher.util.Errors;
+import org.graalvm.polyglot.*;
 
 import java.lang.invoke.MutableCallSite;
 import java.net.http.HttpClient;
@@ -25,7 +24,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static dev.pfaff.log4truth.StandardTags.*;
@@ -45,6 +43,7 @@ public final class ScriptEngine {
 				.methodScoping(false)
 				.allowPublicAccess(true)
 				.allowImplementations(Supplier.class)
+				.allowImplementations(ScriptChannelHandler.class)
 				.allowImplementations(ScriptRouteHandler.class);
 		Api.registerTypes(builder);
 		JSApiNodeFS.registerTypes(builder);
@@ -80,7 +79,7 @@ public final class ScriptEngine {
 //	public final Cache<String, Pattern> patternCache = new MapCache<>(Pattern::compile);
 
 	public ScriptEngine() {
-		handler = new MutableCallSite(CallSiteHandler.chainHandlers(this, List.of()));
+		requestHandler = new MutableCallSite(CallSiteHandler.chainHandlers(this, List.of()));
 	}
 
 
@@ -99,7 +98,8 @@ public final class ScriptEngine {
 			.loader(new FileLoader(TEMPLATES_DIR))
 			.extension(new OurExtension(this))
 			.build();
-	public final MutableCallSite handler;
+	public final MutableCallSite requestHandler;
+	public Map<String, HandlerRef> channelHandlers = Map.of();
 
 	private void setupBindings(ScriptThread thread, Context ctx, String lang) {
 		var start = System.nanoTime();

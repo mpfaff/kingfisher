@@ -93,7 +93,6 @@ public final class CallSiteHandler extends Handler.Abstract {
 	 * @param handlers the handlers to chain
 	 */
 	public static MethodHandle chainHandlers(ScriptEngine engine, List<RequestHandler> handlers) {
-		WEB_LOGGER.log(() -> "handlers: " + handlers, List.of(DEBUG));
 		var a = new ArrayList<MethodHandle>(handlers.size() + 1);
 		a.add(MH_handleLogging);
 		for (var handler : handlers) a.add(MH_handle.bindTo(handler));

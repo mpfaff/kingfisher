@@ -1,5 +1,6 @@
 package kingfisher.scripting;
 
+import kingfisher.channel.ScriptChannelHandler;
 import kingfisher.constants.Method;
 import kingfisher.requests.ScriptRouteHandler;
 
@@ -21,4 +22,11 @@ public abstract class RegistrationApi {
 	 * @param handler the handler for the route.
 	 */
 	public abstract void addRoute(String method, String path, ScriptRouteHandler handler);
+
+	/**
+	 * Registers a handler for the specified channel.
+	 *
+	 * @param name the name of the channel.
+	 */
+	public abstract void addChannel(String name, ScriptChannelHandler handler);
 }

@@ -1,13 +1,23 @@
 package kingfisher.interop;
 
+import dev.pfaff.log4truth.Logger;
+import kingfisher.interop.js.PromiseRejectionException;
+import kingfisher.responses.BuiltResponse;
+import kingfisher.scripting.EventLoop;
+import kingfisher.util.Errors;
 import org.graalvm.polyglot.Value;
 
 import java.lang.invoke.*;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
+import static dev.pfaff.log4truth.StandardTags.DEBUG;
 import static java.lang.invoke.MethodHandles.*;
 import static java.lang.invoke.MethodType.methodType;
 
@@ -83,6 +93,40 @@ public final class ValueUtil {
 					.invokeExact(constructor);
 		} catch (Throwable e) {
 			throw new RuntimeException(e);
+		}
+	}
+
+	public static Object resolveMaybePromise(Value value, EventLoop eventLoop) throws Exception {
+		if (value.canInvokeMember("then")) {
+			var fut = new CompletableFuture<>();
+			Logger.log(() -> "registered then callback " + System.identityHashCode(fut),
+					List.of(DEBUG));
+			Consumer<Object> resolveFn = v -> {
+				Logger.log(() -> "resolved " + System.identityHashCode(fut), List.of(DEBUG));
+				fut.complete(v);
+			};
+			Consumer<Object> rejectFn = e -> {
+				Logger.log(() -> "rejected " + System.identityHashCode(fut), List.of(DEBUG));
+				fut.completeExceptionally(new PromiseRejectionException(e));
+			};
+			value.invokeMember("then", resolveFn, rejectFn);
+			//					result.invokeMember("then", resolveFn);
+			//					result.invokeMember("catch", rejectFn);
+			while (!fut.isDone()) {
+				if (eventLoop.runMicrotask()) {
+					Logger.log(() -> "ran microtask", List.of(DEBUG));
+				} else {
+					Thread.onSpinWait();
+				}
+			}
+			Logger.log(() -> "completed", List.of(DEBUG));
+			try {
+				return fut.get();
+			} catch (Throwable e) {
+				throw Errors.wrapError(Errors.unwrapError(e));
+			}
+		} else {
+			return value;
 		}
 	}
 }

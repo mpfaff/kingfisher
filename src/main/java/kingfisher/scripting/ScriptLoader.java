@@ -2,6 +2,7 @@ package kingfisher.scripting;
 
 import dev.pfaff.log4truth.Logger;
 import kingfisher.requests.CallSiteHandler;
+import kingfisher.requests.RequestHandler;
 import org.graalvm.polyglot.Source;
 
 import java.io.File;
@@ -10,12 +11,13 @@ import java.nio.file.Files;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.Watchable;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-import static dev.pfaff.log4truth.StandardTags.ERROR;
-import static dev.pfaff.log4truth.StandardTags.WARN;
+import static dev.pfaff.log4truth.StandardTags.*;
 import static kingfisher.Config.SCRIPTS_DIR;
 import static kingfisher.Main.SCRIPT_LOGGER;
+import static kingfisher.Main.WEB_LOGGER;
 
 /**
  * Handles loading (and hot reloading) scripts.
@@ -91,12 +93,28 @@ public final class ScriptLoader {
 			try {
 				var thread = fut.get();
 				registrar.requestHandlers.addAll(thread.registrar.requestHandlers);
+				registrar.channelHandlers.putAll(thread.registrar.channelHandlers);
 			} catch (InterruptedException | ExecutionException e) {
 				throw new RuntimeException(e);
 			}
 		});
 		registrar.complete();
-		engine.handler.setTarget(CallSiteHandler.chainHandlers(engine, registrar.requestHandlers));
+		WEB_LOGGER.log(() -> {
+			var sb = new StringBuilder("request handlers:");
+			for (var handler : registrar.requestHandlers) {
+				sb.append("\n - ").append(handler);
+			}
+			return sb.toString();
+		}, List.of(DEBUG));
+		WEB_LOGGER.log(() -> {
+			var sb = new StringBuilder("channel handlers:");
+			registrar.channelHandlers.forEach((name, handler) -> {
+				sb.append("\n - ").append(name).append(": ").append(handler);
+			});
+			return sb.toString();
+		}, List.of(DEBUG));
+		engine.requestHandler.setTarget(CallSiteHandler.chainHandlers(engine, registrar.requestHandlers));
+		engine.channelHandlers = Map.copyOf(registrar.channelHandlers);
 	}
 
 	private static String detectLanguage(File file) throws IOException {

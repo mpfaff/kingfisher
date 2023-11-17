@@ -7,6 +7,7 @@ import org.eclipse.jetty.util.Callback;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,6 +33,9 @@ public record BuiltResponse(int status, Map<String, String> headers, Writable wr
 			if (writable != null) {
 				writable.writeTo(response, callback);
 				WEB_LOGGER.log(() -> "Transmitted content", List.of(DEBUG));
+			} else {
+				callback.succeeded();
+//				response.write(true, ByteBuffer.allocate(0), callback);
 			}
 		} catch (Throwable e) {
 			WEB_LOGGER.log(() -> "Caught exception while transmitting response", e, List.of(ERROR));

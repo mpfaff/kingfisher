@@ -5,13 +5,13 @@ import dev.pfaff.log4truth.NamedLogger;
 import kingfisher.constants.Status;
 import kingfisher.requests.CallSiteHandler;
 import kingfisher.responses.BuiltResponse;
-import kingfisher.responses.ResponseBuilder;
 import kingfisher.scripting.ScriptEngine;
 import kingfisher.scripting.ScriptLoader;
 import kingfisher.util.Errors;
 import org.eclipse.jetty.http.HttpException;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.util.Callback;
+import org.graalvm.polyglot.PolyglotException;
 
 import java.util.List;
 
@@ -52,7 +52,7 @@ public final class Main {
 			connector.setPort(BIND_PORT);
 			server.setDynamic(false);
 			server.setConnectors(new Connector[]{connector});
-			var handler = new CallSiteHandler(engine.handler);
+			var handler = new CallSiteHandler(engine.requestHandler);
 			server.setHandler(new Handler.Abstract() {
 				@Override
 				public boolean handle(Request request, Response response, Callback callback) {
@@ -87,11 +87,15 @@ public final class Main {
 		String message;
 		var status = Status.INTERNAL_SERVER_ERROR;
 		cause = Errors.unwrapError(cause);
-		if (cause instanceof HttpException httpException) {
-			status = httpException.getCode();
-			message = httpException.getReason() != null ? httpException.getReason() : Integer.toString(status);
-		} else {
-			message = "Internal server error";
+		switch (cause) {
+			case HttpException httpException -> {
+				status = httpException.getCode();
+				message = httpException.getReason() != null ? httpException.getReason() : Integer.toString(status);
+			}
+			case PolyglotException polyglotException -> {
+				message = "Script error";
+			}
+			case null, default -> message = "Internal server error";
 		}
 		WEB_LOGGER.log(() -> "Caught exception while handling request: " + message, cause, List.of(ERROR));
 		BuiltResponse.error(engine, status, message).send(response, callback);
