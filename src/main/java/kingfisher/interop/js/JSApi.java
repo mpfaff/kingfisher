@@ -1,7 +1,9 @@
 package kingfisher.interop.js;
 
 import kingfisher.constants.Method;
-import kingfisher.scripting.EventLoop;
+import kingfisher.interop.JObject;
+import kingfisher.interop.ValueUtil;
+import kingfisher.scripting.ScriptThread;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
@@ -9,13 +11,20 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
+// TODO: add optional AbortSignal to async methods
 public final class JSApi {
-	private final EventLoop eventLoop;
+	private static final JObject ENCODING = ValueUtil.makeEnumConstantsByNameMap(Encoding.class);
+
+	private final ScriptThread thread;
+	public final JSApiNodeChildProcess childProcess;
 	public final JSApiNodeFS fs;
 
-	public JSApi(EventLoop eventLoop) {
-		this.eventLoop = eventLoop;
-		this.fs = new JSApiNodeFS(eventLoop);
+	public final JObject Encoding = ENCODING;
+
+	public JSApi(ScriptThread thread) {
+		this.thread = thread;
+		this.childProcess = new JSApiNodeChildProcess(thread);
+		this.fs = new JSApiNodeFS(thread.eventLoop);
 	}
 
 	public JPromise<JSFetchResponse> fetch(String url, Value options) {
@@ -51,10 +60,10 @@ public final class JSApi {
 		}
 
 		return JPromise.submitToExecutor(() -> {
-			var res = eventLoop.engine.httpClient.send(builder.method(method, body).build(),
+			var res = thread.eventLoop.engine.httpClient.send(builder.method(method, body).build(),
 					HttpResponse.BodyHandlers.ofByteArray());
-			return new JSFetchResponse(res, eventLoop);
-		}, eventLoop.engine.httpClientExecutor, eventLoop);
+			return new JSFetchResponse(res, thread.eventLoop);
+		}, thread.eventLoop.engine.httpClientExecutor, thread.eventLoop);
 	}
 
 	public JPromise<JSFetchResponse> fetch(String url) {

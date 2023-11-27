@@ -6,4 +6,4 @@ def handle(req, args):
 
 addRoute(GET, "/hello_polyglot_py/(?<name>.+)", handle)
 
-addChannel("hello_py", lambda name: print(f"Hello, {name}! I am Python!"))
+addStatelessChannel("hello_py", lambda name: print(f"Hello, {name}! I am Python!"))

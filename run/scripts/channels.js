@@ -4,4 +4,4 @@ addRoute(GET, "/hello_polyglot_js/(?<name>.+)", async (req, args) => {
     return respond().finish();
 });
 
-addChannel("hello_js", name => print(`Hello, ${name}! I am JavaScript!`));
+addStatelessChannel("hello_js", name => print(`Hello, ${name}! I am JavaScript!`));

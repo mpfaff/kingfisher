@@ -33,3 +33,16 @@
     list[5] = 25;
     print(`JList: ${list}`);
 }
+
+const assert = (expected, actual) => {
+    if (actual !== expected) throw new Error(`Expected ${expected}, found ${actual}`);
+};
+
+addRoute(GET, "/test/exec", async req => {
+    const result = await childProcess.exec("/bin/echo", ["foo"], {encoding: Encoding.UTF_8});
+    print(`got result: ${result}`);
+    assert(0, result.status);
+    assert("foo\n", result.stdout);
+    assert("", result.stderr);
+    return respond().content("exec worked!").finish();
+});

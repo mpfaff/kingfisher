@@ -2,17 +2,15 @@ package kingfisher.scripting;
 
 import dev.pfaff.log4truth.NamedLogger;
 import io.pebbletemplates.pebble.PebbleEngine;
-import kingfisher.channel.ScriptChannelHandler;
-import kingfisher.interop.ValueUtil;
+import kingfisher.channel.ScriptStatelessChannelHandler;
+import kingfisher.interop.js.JSApiNodeChildProcess;
 import kingfisher.interop.js.JSApiNodeFS;
 import kingfisher.interop.js.JSImplementations;
 import kingfisher.requests.CallSiteHandler;
 import kingfisher.requests.ScriptRouteHandler;
-import kingfisher.responses.BuiltResponse;
 import kingfisher.templating.FileLoader;
 import kingfisher.templating.OurExtension;
 import kingfisher.util.BlockingOfferQueue;
-import kingfisher.util.Errors;
 import org.graalvm.polyglot.*;
 
 import java.lang.invoke.MutableCallSite;
@@ -43,9 +41,10 @@ public final class ScriptEngine {
 				.methodScoping(false)
 				.allowPublicAccess(true)
 				.allowImplementations(Supplier.class)
-				.allowImplementations(ScriptChannelHandler.class)
+				.allowImplementations(ScriptStatelessChannelHandler.class)
 				.allowImplementations(ScriptRouteHandler.class);
 		Api.registerTypes(builder);
+		JSApiNodeChildProcess.registerTypes(builder);
 		JSApiNodeFS.registerTypes(builder);
 		hostAccess = builder.build();
 	}
@@ -66,9 +65,10 @@ public final class ScriptEngine {
 				.name("Script Executor #", 0)
 				.factory()
 	);
-	public final ExecutorService ioExecutor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual()
+	public final ThreadFactory ioThreadFactory = Thread.ofVirtual()
 			.name("I/O #", 0)
-			.factory());
+			.factory();
+	public final ExecutorService ioExecutor = Executors.newThreadPerTaskExecutor(ioThreadFactory);
 	public final ExecutorService httpClientExecutor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual()
 			.name("Http Client #", 0)
 			.factory());
@@ -76,10 +76,11 @@ public final class ScriptEngine {
 			.executor(httpClientExecutor)
 			.build();
 
+	public final ScriptLoader loader = new ScriptLoader(this);
+
 //	public final Cache<String, Pattern> patternCache = new MapCache<>(Pattern::compile);
 
 	public ScriptEngine() {
-		requestHandler = new MutableCallSite(CallSiteHandler.chainHandlers(this, List.of()));
 	}
 
 
@@ -98,7 +99,7 @@ public final class ScriptEngine {
 			.loader(new FileLoader(TEMPLATES_DIR))
 			.extension(new OurExtension(this))
 			.build();
-	public final MutableCallSite requestHandler;
+	public final MutableCallSite requestHandler = new MutableCallSite(CallSiteHandler.chainHandlers(this, List.of()));
 	public Map<String, HandlerRef> channelHandlers = Map.of();
 
 	private void setupBindings(ScriptThread thread, Context ctx, String lang) {
@@ -193,6 +194,7 @@ public final class ScriptEngine {
 			var start = System.nanoTime();
 			long elapsed;
 			try (var thread = scriptThreadSupplier.get()) {
+				thread.lateInit();
 				return action.apply(thread);
 			} finally {
 				elapsed = System.nanoTime() - start;

@@ -49,7 +49,7 @@ public abstract class ScriptThread implements AutoCloseable {
 	public void exportApi(String lang, Value scope) {
 		Exports.objectMembers(new Api(this)).export(scope);
 		switch (lang) {
-			case "js" -> Exports.objectMembers(new JSApi(eventLoop)).export(scope);
+			case "js" -> Exports.objectMembers(new JSApi(this)).export(scope);
 			default -> {
 			}
 		}

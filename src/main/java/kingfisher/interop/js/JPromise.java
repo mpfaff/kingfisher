@@ -47,8 +47,11 @@ public final class JPromise<T> {
 		Logger.log(() -> "registering then callbacks on JPromise: " + onResolve + ", " + onReject, List.of(DEBUG));
 		var fut = new CompletableFuture<Value>();
 		future.whenComplete((ok, err) -> {
+			{
+				var err_ = err;
+				Logger.log(() -> "completed: e=" + err_, List.of(DEBUG));
+			}
 			err = Errors.unwrapError(err);
-			Logger.log(() -> "completed", List.of(DEBUG));
 			var err_ = err;
 			eventLoop.submitMicrotask(() -> {
 				try {

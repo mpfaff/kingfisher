@@ -1,12 +1,10 @@
 package kingfisher.requests;
 
-import kingfisher.channel.ScriptChannelHandler;
+import kingfisher.channel.ScriptStatelessChannelHandler;
+import kingfisher.channel.StatelessChannelScriptThread;
 import kingfisher.interop.Exports;
 import kingfisher.responses.ResponseBuilder;
-import kingfisher.scripting.HandlerRef;
-import kingfisher.scripting.LiveApi;
-import kingfisher.scripting.ScriptEngine;
-import kingfisher.scripting.ScriptThread;
+import kingfisher.scripting.*;
 import org.graalvm.polyglot.Value;
 
 public final class RequestScriptThread extends ScriptThread {
@@ -16,21 +14,25 @@ public final class RequestScriptThread extends ScriptThread {
 	public RequestScriptThread(ScriptEngine engine, HandlerRef handler) {
 		super(engine, handler.script());
 		this.targetHandler = handler.handlerId();
-		lateInit();
 	}
 
 	@Override
 	public void exportApi(String lang, Value scope) {
 		super.exportApi(lang, scope);
 		Exports.objectMembers(new RegistrationApi()).export(scope);
-		Exports.objectMembers(new Api(engine)).export(scope);
+		Exports.objectMembers(new Api(this)).export(scope);
 	}
 
 	/**
 	 * Refer to {@link kingfisher.scripting.RegistrationApi}.
 	 */
-	public final class RegistrationApi extends kingfisher.scripting.RegistrationApi {
+	public final class RegistrationApi extends LiveRegistrationApi {
 		private RegistrationApi() {}
+
+		@Override
+		protected ScriptThread thread() {
+			return RequestScriptThread.this;
+		}
 
 		@Override
 		public void addRoute(String method, String path, ScriptRouteHandler handler) {
@@ -41,7 +43,7 @@ public final class RequestScriptThread extends ScriptThread {
 		}
 
 		@Override
-		public void addChannel(String name, ScriptChannelHandler handler) {
+		public void addStatelessChannel(String name, ScriptStatelessChannelHandler handler) {
 			nextHandlerId();
 		}
 	}
@@ -50,8 +52,8 @@ public final class RequestScriptThread extends ScriptThread {
 	 * The API available to each script when it is executed to handle a request.
 	 */
 	public static final class Api extends LiveApi {
-		private Api(ScriptEngine engine) {
-			super(engine);
+		private Api(ScriptThread thread) {
+			super(thread);
 		}
 
 		/**

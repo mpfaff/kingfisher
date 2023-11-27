@@ -44,7 +44,7 @@ public final class Main {
 
 		ScriptEngine engine = new ScriptEngine();
 
-		new ScriptLoader(engine).launch();
+		engine.loader.launch();
 
 		try {
 			Server server = new Server();

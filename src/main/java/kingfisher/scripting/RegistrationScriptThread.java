@@ -1,6 +1,6 @@
 package kingfisher.scripting;
 
-import kingfisher.channel.ScriptChannelHandler;
+import kingfisher.channel.ScriptStatelessChannelHandler;
 import kingfisher.interop.Exports;
 import kingfisher.interop.JObject;
 import kingfisher.interop.ValueUtil;
@@ -23,7 +23,6 @@ public final class RegistrationScriptThread extends ScriptThread {
 	public RegistrationScriptThread(ScriptEngine engine, Registrar registrar, Script script) {
 		super(engine, script);
 		this.registrar = registrar;
-		lateInit();
 	}
 
 	@Override
@@ -39,6 +38,11 @@ public final class RegistrationScriptThread extends ScriptThread {
 		private RegistrationApi() {}
 
 		@Override
+		public void requestPermission(String permission) {
+			script.permissions.add(permission);
+		}
+
+		@Override
 		public void addRoute(String method, String path, ScriptRouteHandler handler) {
 			var engine = RegistrationScriptThread.this.engine;
 			var script = RegistrationScriptThread.this.script;
@@ -47,7 +51,7 @@ public final class RegistrationScriptThread extends ScriptThread {
 			registrar.checkState();
 
 			int handlerId = nextHandlerId();
-			var requestHandler = new RegexRouteHandler(method,
+			var requestHandler = RequestHandler.regexRoute(method,
 					Pattern.compile(path),
 //					engine.patternCache.get(path),
 					new WrappedScriptRouteHandler(engine, new HandlerRef(script, handlerId)));
@@ -55,7 +59,7 @@ public final class RegistrationScriptThread extends ScriptThread {
 		}
 
 		@Override
-		public void addChannel(String name, ScriptChannelHandler handler) {
+		public void addStatelessChannel(String name, ScriptStatelessChannelHandler handler) {
 			var script = RegistrationScriptThread.this.script;
 			var registrar = RegistrationScriptThread.this.registrar;
 

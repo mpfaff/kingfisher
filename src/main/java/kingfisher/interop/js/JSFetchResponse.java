@@ -6,6 +6,8 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
@@ -54,21 +56,15 @@ public final class JSFetchResponse {
 
 	// TODO: implement the rest of them
 
-//	public Task<String> text() {
-//		var future = engine.httpClientExecutor.submit(() -> new String(response.body(), StandardCharsets.UTF_8));
-//		return () -> {
-//			try {
-//				return future.get();
-//			} catch (InterruptedException | ExecutionException e) {
-//				throw throwUnchecked(e);
-//			}
-//		};
-//	}
-
-	public JPromise<String> text() {
-		Logger.log(() -> "res.text");
-		return JPromise.submitToExecutor(() -> new String(response.body(), StandardCharsets.UTF_8),
+	public JPromise<String> text(Encoding encoding) {
+		return JPromise.submitToExecutor(() -> {
+					return encoding.decode(response.body());
+				},
 				thread.engine.httpClientExecutor,
 				thread);
+	}
+
+	public JPromise<String> text() {
+		return text(Encoding.UTF_8);
 	}
 }

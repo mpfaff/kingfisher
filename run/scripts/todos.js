@@ -1,7 +1,7 @@
 async function loadTodos() {
     let json = "[]";
     try {
-        json = await fs.readFile("data/todos.json", 'utf8');
+        json = await fs.readFile("data/todos.json", Encoding.UTF_8);
     } catch (e) {
         print(`Caught exception while loading TODOs: ${e}`);
     }

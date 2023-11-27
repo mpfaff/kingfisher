@@ -5,9 +5,6 @@ import kingfisher.scripting.EventLoop;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
@@ -20,9 +17,6 @@ import static kingfisher.interop.ValueUtil.recordConverter;
  * Implements the <a href="https://nodejs.org/docs/latest/api/fs.html#promises-api">{@code node:fs/promises}</a> API.
  */
 public final class JSApiNodeFS {
-	private static final String ENCODING_UTF8 = "utf8";
-	private static final String DEFAULT_ENCODING = ENCODING_UTF8;
-
 	private final EventLoop eventLoop;
 
 	public JSApiNodeFS(EventLoop eventLoop) {
@@ -106,11 +100,10 @@ public final class JSApiNodeFS {
 		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
-	public JPromise<?> readFile(String path, String encoding) {
+	public JPromise<?> readFile(String path, Encoding encoding) {
 		if (encoding == null) return readFile(path);
-		var charset = encodingToCharset(encoding);
 		return JPromise.submitToExecutor(() -> {
-			return Files.readString(Path.of(path), charset);
+			return Files.readString(Path.of(path), encoding.charset);
 		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
@@ -124,13 +117,12 @@ public final class JSApiNodeFS {
 	}
 
 	public JPromise<Void> writeFile(String path, String data) {
-		return writeFile(path, data, DEFAULT_ENCODING);
+		return writeFile(path, data, Encoding.DEFAULT);
 	}
 
-	public JPromise<Void> writeFile(String path, String data, String encoding) {
-		var charset = encodingToCharset(encoding);
+	public JPromise<Void> writeFile(String path, String data, Encoding encoding) {
 		return JPromise.submitToExecutor(() -> {
-			Files.writeString(Path.of(path), data, charset);
+			Files.writeString(Path.of(path), data, encoding.charset);
 			return null;
 		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
@@ -143,7 +135,7 @@ public final class JSApiNodeFS {
 	}
 
 	public JPromise<Void> writeFile(String path, String data, WriteStringFileOptions options) {
-		var encoding = options != null && options.encoding != null ? options.encoding : DEFAULT_ENCODING;
+		var encoding = options != null && options.encoding != null ? options.encoding : Encoding.DEFAULT;
 		return writeFile(path, data, encoding);
 	}
 
@@ -170,19 +162,11 @@ public final class JSApiNodeFS {
 		}, eventLoop.engine.ioExecutor, eventLoop);
 	}
 
-	private static Charset encodingToCharset(String encoding) {
-		return switch (encoding) {
-			case null -> StandardCharsets.UTF_8;
-			case ENCODING_UTF8 -> StandardCharsets.UTF_8;
-			default -> throw new UnsupportedOperationException("Unsupported encoding: " + encoding);
-		};
-	}
-
 	/**
 	 * @param encoding if non-null, the file will be decoded to a {@link String} using this encoding (note that this
 	 *                 uses JavaScript encoding names).
 	 */
-	public record ReadFileOptions(@OptionalField String encoding) {
+	public record ReadFileOptions(@OptionalField Encoding encoding) {
 	}
 
 	public record WriteBinaryFileOptions() {
@@ -190,9 +174,9 @@ public final class JSApiNodeFS {
 
 	/**
 	 * @param encoding the name of the encoding to use to encode the data {@link String} (note that this
-	 *                 uses JavaScript encoding names). Defaults to {@value DEFAULT_ENCODING}.
+	 *                 uses JavaScript encoding names). Defaults to {@link Encoding#DEFAULT}.
 	 */
-	public record WriteStringFileOptions(@OptionalField String encoding) {
+	public record WriteStringFileOptions(@OptionalField Encoding encoding) {
 	}
 
 	/**

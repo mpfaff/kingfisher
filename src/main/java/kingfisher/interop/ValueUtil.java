@@ -2,7 +2,6 @@ package kingfisher.interop;
 
 import dev.pfaff.log4truth.Logger;
 import kingfisher.interop.js.PromiseRejectionException;
-import kingfisher.responses.BuiltResponse;
 import kingfisher.scripting.EventLoop;
 import kingfisher.util.Errors;
 import org.graalvm.polyglot.Value;
@@ -12,12 +11,13 @@ import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static dev.pfaff.log4truth.StandardTags.DEBUG;
+import static dev.pfaff.log4truth.StandardTags.WARN;
 import static java.lang.invoke.MethodHandles.*;
 import static java.lang.invoke.MethodType.methodType;
 
@@ -43,24 +43,30 @@ public final class ValueUtil {
 		var getters = Arrays.stream(components).map(component -> {
 			Function<Value, Object> getter;
 			if (component.isAnnotationPresent(OptionalField.class)) {
+				var name = component.getName();
+				var type = component.getType();
 				getter = v -> {
-					var name = component.getName();
 					if (v.hasMember(name)) {
-						return v.getMember(name);
-					} else if (v.hasHashEntry(name)) {
-						return v.getHashValue(name);
+						// throws if not present
+						return v.getMember(name).as(type);
+					} else if (v.hasHashEntries()) {
+						// null if not present
+						return v.getHashValue(name).as(type);
 					} else {
 						return null;
 					}
 				};
 			} else {
+				var name = component.getName();
+				var type = component.getType();
 				getter = v -> {
-					var name = component.getName();
 					Object value;
 					if (v.hasMember(name)) {
-						value = v.getMember(name);
-					} else if (v.hasHashEntry(name)) {
-						value = v.getHashValue(name);
+						// throws if not present
+						value = v.getMember(name).as(type);
+					} else if (v.hasHashEntries()) {
+						// null if not present
+						value = v.getHashValue(name).as(type);
 					} else {
 						value = null;
 					}
@@ -74,11 +80,12 @@ public final class ValueUtil {
 		}).toArray(MethodHandle[]::new);
 		MethodHandle constructor;
 		try {
-			constructor = permuteArguments(filterArguments(l.findConstructor(targetType,
-							methodType(void.class,
-									Arrays.stream(components).<Class<?>>map(RecordComponent::getType).toList())),
-					0,
-					getters), methodType(targetType, Value.class), IntStream.range(0, getters.length).toArray());
+			constructor = l.findConstructor(targetType,
+					methodType(void.class, Arrays.stream(components).<Class<?>>map(RecordComponent::getType).toList()));
+			constructor = filterArguments(constructor, 0, getters);
+			constructor = permuteArguments(constructor,
+					methodType(targetType, Value.class),
+					IntStream.range(0, getters.length).map(ignored -> 0).toArray());
 		} catch (NoSuchMethodException | IllegalAccessException e) {
 			throw new RuntimeException(e);
 		}
@@ -106,27 +113,33 @@ public final class ValueUtil {
 				fut.complete(v);
 			};
 			Consumer<Object> rejectFn = e -> {
-				Logger.log(() -> "rejected " + System.identityHashCode(fut), List.of(DEBUG));
+				Logger.log(() -> "rejected " + System.identityHashCode(fut) + ": " + e.getClass() + "\n" + e, List.of(DEBUG));
 				fut.completeExceptionally(new PromiseRejectionException(e));
 			};
 			value.invokeMember("then", resolveFn, rejectFn);
 			//					result.invokeMember("then", resolveFn);
 			//					result.invokeMember("catch", rejectFn);
 			while (!fut.isDone()) {
-				if (eventLoop.runMicrotask()) {
-					Logger.log(() -> "ran microtask", List.of(DEBUG));
-				} else {
-					Thread.onSpinWait();
-				}
+				eventLoop.runMicrotask(true);
+				Logger.log(() -> "ran microtask", List.of(DEBUG));
 			}
 			Logger.log(() -> "completed", List.of(DEBUG));
+			int queued = eventLoop.queuedMicrotaskCount();
+			if (queued > 0) {
+				Logger.log(() -> "There are still " + queued + " microtasks queued", List.of(WARN));
+			}
 			try {
 				return fut.get();
 			} catch (Throwable e) {
-				throw Errors.wrapError(Errors.unwrapError(e));
+				throw Errors.wrapThrowable(Errors.unwrapError(e));
 			}
 		} else {
 			return value;
 		}
+	}
+
+	public static <T extends Enum<T>> JObject makeEnumConstantsByNameMap(Class<T> type) {
+		return new JObject(Arrays.stream(type.getEnumConstants())
+				.collect(Collectors.toUnmodifiableMap(Enum::name, Function.identity())));
 	}
 }

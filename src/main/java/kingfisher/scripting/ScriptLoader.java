@@ -12,6 +12,7 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.Watchable;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import static dev.pfaff.log4truth.StandardTags.*;
@@ -68,7 +69,7 @@ public final class ScriptLoader {
 		}, "Script Loader").start();
 	}
 
-	private void hotReload() {
+	public void hotReload() {
 		SCRIPT_LOGGER.log(() -> "Change detected. Hot reloading scripts", List.of(WARN));
 		try {
 			activateScripts();
@@ -85,6 +86,7 @@ public final class ScriptLoader {
 				() -> new RegistrationScriptThread(engine, new Registrar(), script),
 				"Script registration",
 				thread -> {
+					thread.script.permissions = Set.copyOf(thread.script.permissions);
 					thread.registrar.complete();
 					Logger.log(() -> "Registered script " + script);
 					return thread;

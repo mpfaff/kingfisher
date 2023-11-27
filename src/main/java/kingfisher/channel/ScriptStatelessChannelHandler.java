@@ -6,6 +6,6 @@ import org.graalvm.polyglot.Value;
  * A channel handler implemented by a script.
  */
 @FunctionalInterface
-public interface ScriptChannelHandler {
+public interface ScriptStatelessChannelHandler {
 	Value handle(Object message) throws Throwable;
 }

@@ -2,6 +2,8 @@ package kingfisher.scripting;
 
 import org.graalvm.polyglot.Source;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Supplier;
 
 public final class Script {
@@ -9,6 +11,7 @@ public final class Script {
 	private Object state;
 	// @Stable
 	private boolean initializedState = false;
+	public Set<String> permissions = new HashSet<>();
 
 	public Script(Source source) {
 		this.source = source;
