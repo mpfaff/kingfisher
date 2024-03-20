@@ -25,10 +25,12 @@ jobs:
       with:
         arguments: --no-daemon distTar
         cache-read-only: false
+    - name: Extract distribution tar
+      run: mkdir kingfisher && pushd kingfisher && tar -xf ../build/distributions/kingfisher-*.tar --strip-components 1 && popd
     - name: Upload artifact
       uses: actions/upload-artifact@v3.1.3
       with:
         name: kingfisher
-        path: build/distributions/kingfisher-*.tar
+        path: kingfisher
         if-no-files-found: error
         retention-days: 90
